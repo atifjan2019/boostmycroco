@@ -36,8 +36,8 @@ export default function ContactPage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Email Us</h3>
                 <p className="text-slate-600 mb-4 font-medium">Our friendly team is here to help.</p>
-                <a href="mailto:support@boostmycroco.com" className="text-primary font-bold hover:underline inline-flex items-center gap-2">
-                  support@boostmycroco.com
+                <a href="mailto:hello@boostmycroco.com" className="text-primary font-bold hover:underline inline-flex items-center gap-2">
+                  hello@boostmycroco.com
                 </a>
               </div>
 
