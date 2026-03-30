@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "type": "quote_received",
+    "title": "New quote on your request",
+    "message": "Supratim Chatterjee submitted a quote of €550 for 'Implementation hours booking'",
+    "request_id": 57,
+    "from_user": "Supratim Chatterjee",
+    "read": false,
+    "created_at": "2025-02-25T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "type": "request_assigned",
+    "title": "Request assigned",
+    "message": "Your request 'Smart Filter Help' has been assigned to Miguel Elias",
+    "request_id": 60,
+    "from_user": "BoostMyCroco",
+    "read": false,
+    "created_at": "2025-04-18T09:00:00Z"
+  },
+  {
+    "id": 3,
+    "type": "request_finished",
+    "title": "Request completed",
+    "message": "Your request 'How can I hide Uncategorized category' has been marked as Finished",
+    "request_id": 24,
+    "from_user": "BoostMyCroco",
+    "read": true,
+    "created_at": "2023-12-29T07:03:18Z"
+  },
+  {
+    "id": 4,
+    "type": "new_member",
+    "title": "New mentor available",
+    "message": "Alexander Velandia joined the platform and is available for Spanish-language projects",
+    "request_id": null,
+    "from_user": "BoostMyCroco",
+    "read": true,
+    "created_at": "2024-10-02T08:00:00Z"
+  }
+]

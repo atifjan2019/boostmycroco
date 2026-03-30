@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: #0cbd70;
+  --color-primary-dark: #0a9658;
+  --color-primary-light: #e6f8f1;
+  --color-accent: #0ea5e9;
+  
+  /* Light Theme Colors */
+  --color-bg: #ffffff;
+  --color-bg-card: #f8fafc;
+  --color-bg-card2: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-bg text-text antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-primary;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm cursor-pointer transition-all duration-200 border-none;
+  }
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark;
+  }
+  .btn-outline {
+    @apply bg-transparent border border-border text-text-muted hover:border-primary hover:text-text;
+  }
+
+  /* Input & Select */
+  .input {
+    @apply bg-bg-card border border-border rounded-lg px-4 py-2.5 text-text text-sm w-full outline-none transition-colors duration-200 focus:border-primary placeholder:text-text-subtle;
+  }
+  .select {
+    @apply bg-bg-card border border-border rounded-lg px-4 py-2.5 text-text text-sm outline-none cursor-pointer transition-colors duration-200 focus:border-primary;
+  }
+  
+  /* Cards */
+  .card {
+    @apply bg-white border border-border rounded-xl transition-all duration-200 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(22,163,74,0.08)];
+  }
+  
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border;
+  }
+  .badge-initied   { @apply bg-green-50 text-green-700 border-green-200; }
+  .badge-assigned  { @apply bg-blue-50 text-blue-700 border-blue-200; }
+  .badge-finished  { @apply bg-yellow-50 text-yellow-700 border-yellow-200; }
+  .badge-free      { @apply bg-purple-50 text-purple-700 border-purple-200; }
+  .badge-quote     { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+  .badge-offer     { @apply bg-red-50 text-red-700 border-red-200; }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(22,163,74,0); }
+}
+.animate-pulse-green {
+  animation: pulse-green 2s infinite;
+}
