@@ -8,6 +8,7 @@ export default function ContactForm() {
     first_name: '',
     last_name: '',
     email: '',
+    whatsapp_number: '',
     subject: 'general',
     message: ''
   });
@@ -117,6 +118,19 @@ export default function ContactForm() {
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium" 
             placeholder="john@example.com"
             required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="whatsapp_number" className="block text-sm font-bold text-slate-700">WhatsApp Number <span className="text-slate-400 font-normal">(Optional)</span></label>
+          <input 
+            type="tel" 
+            id="whatsapp_number" 
+            name="whatsapp_number"
+            value={formData.whatsapp_number}
+            onChange={handleChange}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium" 
+            placeholder="+1 (234) 567-8900"
           />
         </div>
 
