@@ -1,34 +1,81 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import { Metadata } from 'next';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Calendar, ChevronLeft, Code2, HelpCircle } from 'lucide-react';
 
 interface Faq { question: string; answer: string; }
-interface Tip { id: number; title: string; content: string; created_at: string; slug: string; featured_image?: string; meta_title?: string; meta_description?: string; schema_markup?: string; image_alt_text?: string; code?: string; text_after_code?: string; faqs?: Faq[]; }
+interface Tip { 
+  id: number; 
+  title: string; 
+  content: string; 
+  created_at: string; 
+  slug: string; 
+  featured_image?: string; 
+  meta_title?: string; 
+  meta_description?: string; 
+  schema_markup?: string; 
+  image_alt_text?: string; 
+  code?: string; 
+  text_after_code?: string; 
+  faqs?: Faq[]; 
+  og_title?: string; 
+  og_description?: string; 
+  og_image_url?: string; 
+  twitter_card_type?: string; 
+  twitter_title?: string; 
+  twitter_description?: string; 
+  canonical_url?: string; 
+  author_name?: string; 
+}
 
-export default function TipDetailPage() {
-  const { slug } = useParams();
-  const [tip, setTip] = useState<Tip | null>(null);
-  const [loading, setLoading] = useState(true);
+async function getTip(slug: string): Promise<Tip | null> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tips-and-tricks/${slug}`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.error) return null;
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    if (slug) fetch(`/api/tips-and-tricks/${slug}`).then(r => r.json()).then(d => { setTip(d); setLoading(false); });
-  }, [slug]);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const tip = await getTip(slug);
+  
+  if (!tip) {
+    return { title: 'Post not found - BoostMyCroco' };
+  }
 
-  if (loading) return (
-    <div className="min-h-screen flex flex-col pt-16 bg-white">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center py-32">
-        <svg className="animate-spin w-10 h-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-      </div>
-      <Footer />
-    </div>
-  );
-  if (!tip || (tip as any).error) return (
+  const canonicalUrl = tip.canonical_url || `https://www.boostmycroco.com/tips-and-tricks/${slug}`;
+
+  return {
+    title: tip.meta_title || `${tip.title} - BoostMyCroco`,
+    description: tip.meta_description || 'Check out this tip on BoostMyCroco.',
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: tip.og_title || tip.meta_title || tip.title,
+      description: tip.og_description || tip.meta_description || undefined,
+      images: tip.og_image_url || tip.featured_image ? [tip.og_image_url || tip.featured_image!] : [],
+      type: 'article',
+    },
+    twitter: {
+      card: (tip.twitter_card_type as any) || 'summary_large_image',
+      title: tip.twitter_title || tip.og_title || tip.meta_title || tip.title,
+      description: tip.twitter_description || tip.og_description || tip.meta_description || undefined,
+    },
+  };
+}
+
+export default async function TipDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const tip = await getTip(slug);
+
+  if (!tip) return (
     <div className="min-h-screen flex flex-col pt-16 bg-white">
       <Navbar />
       <div className="flex-1 text-center py-32 text-slate-500 font-medium">Post not found.</div>
@@ -36,18 +83,22 @@ export default function TipDetailPage() {
     </div>
   );
 
+  const canonicalUrl = tip.canonical_url || `https://www.boostmycroco.com/tips-and-tricks/${slug}`;
+
   const schema = tip.schema_markup ? null : {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": canonicalUrl
+    },
     "headline": tip.title,
     "image": tip.featured_image ? [tip.featured_image] : [],
     "datePublished": tip.created_at,
     "dateModified": tip.created_at,
-    "author": {
-      "@type": "Organization",
-      "name": "BoostMyCroco",
-      "url": "https://www.boostmycroco.com"
-    }
+    "author": tip.author_name 
+      ? { "@type": "Person", "name": tip.author_name }
+      : { "@type": "Organization", "name": "BoostMyCroco", "url": "https://www.boostmycroco.com" }
   };
 
   const processedContent = tip.content?.replace(/<img(.*?)>/gi, (match, attrs) => {
@@ -59,8 +110,6 @@ export default function TipDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col pt-16 bg-white">
-      {tip.meta_title ? <title>{tip.meta_title}</title> : <title>{`${tip.title} - BoostMyCroco`}</title>}
-      {tip.meta_description && <meta name="description" content={tip.meta_description} />}
       {tip.schema_markup ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: tip.schema_markup }} />
       ) : (
