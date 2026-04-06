@@ -7,6 +7,8 @@ import { User, Calendar, CircleDollarSign } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
+import { useTurnstile } from '@/hooks/useTurnstile';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 interface Quote { id: number; name: string; email: string; price: number; message: string; created_at: string; }
 interface Request {
@@ -25,6 +27,7 @@ export default function RequestDetailPage() {
   const [quoteMessage, setQuoteMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState({ type: '', text: '' });
+  const turnstile = useTurnstile();
 
   useEffect(() => {
     if (slug) fetch(`/api/requests/${slug}`).then(r => r.json()).then(d => { setReq(d); setLoading(false); });
@@ -46,6 +49,46 @@ export default function RequestDetailPage() {
       <Footer />
     </div>
   );
+
+  const handleQuoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (turnstile.isEnabled && !turnstile.token) {
+      turnstile.setError('Please complete the verification.');
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitMessage({ type: '', text: '' });
+    try {
+      const res = await fetch(`/api/quotes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          request_id: req.id,
+          price: parseFloat(quotePrice) || 0,
+          message: quoteMessage
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSubmitMessage({ type: 'success', text: 'Quote submitted successfully!' });
+        setQuotePrice('');
+        setQuoteMessage('');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setSubmitMessage({ type: 'error', text: data.message || 'Failed to submit quote.' });
+        turnstile.reset();
+      }
+    } catch (err) {
+      setSubmitMessage({ type: 'error', text: 'An unexpected error occurred.' });
+      turnstile.reset();
+    }
+    setSubmitting(false);
+  };
 
   return (
     <div className="min-h-screen flex flex-col pt-16 bg-slate-50/50">
@@ -91,38 +134,7 @@ export default function RequestDetailPage() {
                   <Link href="/login" className="btn btn-primary inline-flex">Log in to Quote</Link>
                 </div>
               ) : (
-                <form className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" onSubmit={async (e) => {
-                  e.preventDefault();
-                  setSubmitting(true);
-                  setSubmitMessage({ type: '', text: '' });
-                  try {
-                    const res = await fetch(`/api/quotes`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      },
-                      body: JSON.stringify({
-                        request_id: req.id,
-                        price: parseFloat(quotePrice) || 0,
-                        message: quoteMessage
-                      })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                      setSubmitMessage({ type: 'success', text: 'Quote submitted successfully!' });
-                      setQuotePrice('');
-                      setQuoteMessage('');
-                      // simple reload to see the new quote
-                      setTimeout(() => window.location.reload(), 1500);
-                    } else {
-                      setSubmitMessage({ type: 'error', text: data.message || 'Failed to submit quote.' });
-                    }
-                  } catch (err) {
-                    setSubmitMessage({ type: 'error', text: 'An unexpected error occurred.' });
-                  }
-                  setSubmitting(false);
-                }}>
+                <form className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" onSubmit={handleQuoteSubmit}>
                   <h3 className="text-lg font-bold text-slate-900 mb-4">Submit a Quote</h3>
                   {submitMessage.text && (
                     <div className={`p-4 mb-4 text-sm rounded-lg ${submitMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
@@ -137,7 +149,10 @@ export default function RequestDetailPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Message / Proposal</label>
                     <textarea required className="input min-h-[120px]" placeholder="Briefly describe how you can help..." value={quoteMessage} onChange={e => setQuoteMessage(e.target.value)}></textarea>
                   </div>
-                  <button type="submit" disabled={submitting} className="btn btn-primary w-full sm:w-auto">
+
+                  <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
+
+                  <button type="submit" disabled={submitting} className="btn btn-primary w-full sm:w-auto mt-4">
                     {submitting ? 'Submitting...' : 'Submit Quote'}
                   </button>
                 </form>
