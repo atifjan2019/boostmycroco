@@ -31,6 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
         />
         <script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               window.smartlook||(function(d) {
