@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
+import { useTurnstile } from '@/hooks/useTurnstile';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
@@ -13,6 +15,7 @@ export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
   const { login } = useAuth();
+  const turnstile = useTurnstile();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +23,12 @@ export default function RegisterPage() {
       setErrorMsg("Passwords don't match.");
       return;
     }
+
+    if (turnstile.isEnabled && !turnstile.token) {
+      turnstile.setError('Please complete the verification.');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
     try {
@@ -43,9 +52,11 @@ export default function RegisterPage() {
         } else {
           setErrorMsg(data.message || 'Registration failed.');
         }
+        turnstile.reset();
       }
     } catch {
       setErrorMsg('Failed to connect to backend.');
+      turnstile.reset();
     } finally {
       setLoading(false);
     }
@@ -90,6 +101,8 @@ export default function RegisterPage() {
                   value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} />
               </div>
             </div>
+
+            <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
 
             <button type="submit" disabled={loading} className="btn btn-primary w-full py-3.5 mt-4 shadow-md shadow-green-600/20 disabled:opacity-70">
               {loading ? 'Creating account...' : 'Create Account'}

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useTurnstile } from '@/hooks/useTurnstile';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function NewRequestPage() {
   const { user, token } = useAuth();
@@ -16,6 +18,7 @@ export default function NewRequestPage() {
     language: '',
     budget: '0',
   });
+  const turnstile = useTurnstile();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,6 +26,12 @@ export default function NewRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (turnstile.isEnabled && !turnstile.token) {
+      turnstile.setError('Please complete the verification.');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
     try {
@@ -45,9 +54,11 @@ export default function NewRequestPage() {
         router.push('/dashboard/requests');
       } else {
         setErrorMsg(data.message || 'Failed to create request.');
+        turnstile.reset();
       }
     } catch {
       setErrorMsg('Failed to connect to backend.');
+      turnstile.reset();
     } finally {
       setLoading(false);
     }
@@ -94,6 +105,8 @@ export default function NewRequestPage() {
             <input name="budget" type="number" min="0" step="0.01" className="input" value={form.budget} onChange={handleChange} />
           </div>
         </div>
+
+        <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
 
         <div className="flex justify-end gap-3 mt-4">
           <button type="button" onClick={() => router.back()} className="btn btn-outline">Cancel</button>

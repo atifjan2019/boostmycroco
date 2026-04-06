@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Rocket, Gift, CircleDollarSign, Megaphone, PartyPopper, LogIn } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTurnstile } from '@/hooks/useTurnstile';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Arabic', 'Hindi'];
 
@@ -16,6 +18,7 @@ export default function MakeARequestPage() {
   const [form, setForm] = useState({ title: '', description: '', type: 'Free', language: 'English', budget: '' });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const turnstile = useTurnstile();
 
   const profile = user?.client_profile;
   const profileComplete = profile?.first_name && profile?.last_name && profile?.phone && profile?.country && (profile?.email_contact || user?.email);
@@ -24,6 +27,12 @@ export default function MakeARequestPage() {
     e.preventDefault();
     if (!user) { router.push('/login'); return; }
     if (!profileComplete) { router.push('/dashboard/profile'); return; }
+
+    if (turnstile.isEnabled && !turnstile.token) {
+      turnstile.setError('Please complete the verification.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://admin.boostmycroco.com';
@@ -33,8 +42,8 @@ export default function MakeARequestPage() {
         body: JSON.stringify({ ...form, budget: parseFloat(form.budget) || 0, author_name: user?.name }),
       });
       if (res.ok) setSubmitted(true);
-      else alert('Failed to submit request.');
-    } catch { alert('Connection error.'); }
+      else { alert('Failed to submit request.'); turnstile.reset(); }
+    } catch { alert('Connection error.'); turnstile.reset(); }
     finally { setSubmitting(false); }
   };
 
@@ -142,6 +151,8 @@ export default function MakeARequestPage() {
                 </div>
               )}
             </div>
+
+            <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
 
             <button type="submit" disabled={submitting || (!authLoading && !user)} className="btn btn-primary w-full py-4 text-base mt-2 shadow-md shadow-green-600/20 disabled:opacity-70">
               <Rocket className="w-5 h-5 mr-1" /> {submitting ? 'Submitting...' : 'Submit Request'}
