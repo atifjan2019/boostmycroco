@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import CommentSectionWrapper from '@/components/CommentSectionWrapper';
 import { Calendar, ChevronLeft, Code2, HelpCircle } from 'lucide-react';
 
 interface Faq { question: string; answer: string; }
@@ -183,6 +184,9 @@ export default async function TipDetailPage({ params }: { params: Promise<{ slug
               </div>
             </div>
           )}
+
+          {/* Comments Section */}
+          <CommentSectionWrapper tipId={tip.id} tipSlug={slug} />
         </article>
       </main>
       <Footer />
