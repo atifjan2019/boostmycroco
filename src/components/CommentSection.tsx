@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, Send, AlertCircle, User, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useTurnstile } from '@/hooks/useTurnstile';
-import TurnstileWidget from '@/components/TurnstileWidget';
 import Link from 'next/link';
 
 interface Comment {
@@ -109,7 +107,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
   const [successMsg, setSuccessMsg] = useState('');
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyingToName, setReplyingToName] = useState<string>('');
-  const turnstile = useTurnstile();
 
   useEffect(() => {
     fetchComments();
@@ -137,7 +134,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       setReplyingTo(commentId);
       setReplyingToName(userName);
       setContent('');
-      // Scroll to form
       document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
@@ -162,11 +158,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       return;
     }
 
-    if (turnstile.isEnabled && !turnstile.token) {
-      turnstile.setError('Please complete the verification.');
-      return;
-    }
-
     setSubmitting(true);
     try {
       const res = await fetch(`/api/tips-and-tricks/${tipSlug}/comments`, {
@@ -179,7 +170,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
           tip_id: tipId,
           content: trimmed,
           parent_id: replyingTo,
-          turnstile_token: turnstile.token,
         }),
       });
 
@@ -192,7 +182,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       setContent('');
       setReplyingTo(null);
       setReplyingToName('');
-      turnstile.rerender();
 
       if (data.status === 'pending') {
         setSuccessMsg('Your comment has been submitted and is awaiting moderation.');
@@ -203,7 +192,6 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       fetchComments();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred.');
-      turnstile.reset();
     } finally {
       setSubmitting(false);
     }
@@ -275,23 +263,20 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium resize-none bg-white text-sm"
             />
-            <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
+            <div className="flex items-center justify-between mt-3">
               <span className="text-xs text-slate-400">{content.length}/1000</span>
-              <div className="flex items-center gap-3 flex-wrap">
-                <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
-                <button
-                  type="submit"
-                  disabled={submitting || !content.trim()}
-                  className="btn btn-primary text-sm py-2 px-5 flex items-center gap-2 disabled:opacity-60"
-                >
-                  {submitting ? (
-                    <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></span>
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  {submitting ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={submitting || !content.trim()}
+                className="btn btn-primary text-sm py-2 px-5 flex items-center gap-2 disabled:opacity-60"
+              >
+                {submitting ? (
+                  <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></span>
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {submitting ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
+              </button>
             </div>
           </form>
         )}
