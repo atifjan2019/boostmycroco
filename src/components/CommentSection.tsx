@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Send, AlertCircle, User } from 'lucide-react';
+import { MessageSquare, Send, AlertCircle, User, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurnstile } from '@/hooks/useTurnstile';
 import TurnstileWidget from '@/components/TurnstileWidget';
@@ -13,6 +13,90 @@ interface Comment {
   content: string;
   created_at: string;
   status: string;
+  parent_id: number | null;
+  replies?: Comment[];
+}
+
+function timeAgo(dateStr: string) {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function CommentCard({
+  comment,
+  onReply,
+  replyingTo,
+  depth = 0,
+}: {
+  comment: Comment;
+  onReply: (id: number, name: string) => void;
+  replyingTo: number | null;
+  depth?: number;
+}) {
+  const [showReplies, setShowReplies] = useState(true);
+  const replies = comment.replies || [];
+
+  return (
+    <div className={depth > 0 ? 'ml-6 md:ml-10 pl-4 border-l-2 border-slate-100' : ''}>
+      <div className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-shadow ${
+        replyingTo === comment.id ? 'border-primary/40 ring-1 ring-primary/20' : 'border-slate-200'
+      }`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-emerald-100 flex items-center justify-center text-primary text-xs font-bold">
+              {comment.user_name?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+            <span className="font-semibold text-slate-800 text-sm">{comment.user_name}</span>
+            {depth > 0 && (
+              <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                <Reply className="w-3 h-3" /> replied
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-slate-400 font-medium">{timeAgo(comment.created_at)}</span>
+        </div>
+        <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-3">{comment.content}</p>
+        <button
+          onClick={() => onReply(comment.id, comment.user_name)}
+          className="text-xs text-slate-400 hover:text-primary font-semibold flex items-center gap-1 transition-colors"
+        >
+          <Reply className="w-3.5 h-3.5" /> Reply
+        </button>
+      </div>
+
+      {replies.length > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowReplies(!showReplies)}
+            className="text-xs text-slate-400 hover:text-slate-600 font-semibold flex items-center gap-1 mb-2 ml-2 transition-colors"
+          >
+            {showReplies ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+          </button>
+          {showReplies && (
+            <div className="space-y-3">
+              {replies.map((reply) => (
+                <CommentCard
+                  key={reply.id}
+                  comment={reply}
+                  onReply={onReply}
+                  replyingTo={replyingTo}
+                  depth={depth + 1}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipSlug: string }) {
@@ -23,6 +107,8 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingToName, setReplyingToName] = useState<string>('');
   const turnstile = useTurnstile();
 
   useEffect(() => {
@@ -42,6 +128,24 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       setLoading(false);
     }
   }
+
+  const handleReply = (commentId: number, userName: string) => {
+    if (replyingTo === commentId) {
+      setReplyingTo(null);
+      setReplyingToName('');
+    } else {
+      setReplyingTo(commentId);
+      setReplyingToName(userName);
+      setContent('');
+      // Scroll to form
+      document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setReplyingToName('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +178,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         body: JSON.stringify({
           tip_id: tipId,
           content: trimmed,
+          parent_id: replyingTo,
           turnstile_token: turnstile.token,
         }),
       });
@@ -84,11 +189,11 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       }
 
       const data = await res.json();
-
       setContent('');
+      setReplyingTo(null);
+      setReplyingToName('');
       turnstile.rerender();
 
-      // If the comment contains a URL, it goes to pending
       if (data.status === 'pending') {
         setSuccessMsg('Your comment has been submitted and is awaiting moderation.');
       } else {
@@ -104,17 +209,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
     }
   };
 
-  const timeAgo = (dateStr: string) => {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const totalCount = comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
 
   return (
     <div className="mt-16 pt-10 border-t border-slate-200">
@@ -122,14 +217,12 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         <MessageSquare className="w-6 h-6 text-primary" />
         <h2 className="text-2xl font-bold text-slate-900">
           Comments
-          <span className="ml-2 text-sm font-medium text-slate-400">
-            ({comments.length})
-          </span>
+          <span className="ml-2 text-sm font-medium text-slate-400">({totalCount})</span>
         </h2>
       </div>
 
       {/* Comment Form */}
-      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 mb-8">
+      <div id="comment-form" className="bg-slate-50 rounded-2xl border border-slate-200 p-6 mb-8">
         {!user ? (
           <div className="text-center py-4">
             <p className="text-slate-600 font-medium mb-3">Join the conversation</p>
@@ -140,11 +233,27 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700">{user.name}</span>
               </div>
-              <span className="text-sm font-semibold text-slate-700">{user.name}</span>
+              {replyingTo && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-primary font-semibold flex items-center gap-1">
+                    <Reply className="w-3.5 h-3.5" /> Replying to {replyingToName}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelReply}
+                    className="text-xs text-slate-400 hover:text-red-500 font-bold transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -161,7 +270,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Share your thoughts..."
+              placeholder={replyingTo ? `Reply to ${replyingToName}...` : 'Share your thoughts...'}
               rows={3}
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium resize-none bg-white text-sm"
@@ -180,7 +289,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  {submitting ? 'Posting...' : 'Post Comment'}
+                  {submitting ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
                 </button>
               </div>
             </div>
@@ -204,18 +313,12 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       ) : (
         <div className="space-y-4">
           {comments.map((comment) => (
-            <div key={comment.id} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-emerald-100 flex items-center justify-center text-primary text-xs font-bold">
-                    {comment.user_name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                  <span className="font-semibold text-slate-800 text-sm">{comment.user_name}</span>
-                </div>
-                <span className="text-xs text-slate-400 font-medium">{timeAgo(comment.created_at)}</span>
-              </div>
-              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-            </div>
+            <CommentCard
+              key={comment.id}
+              comment={comment}
+              onReply={handleReply}
+              replyingTo={replyingTo}
+            />
           ))}
         </div>
       )}
