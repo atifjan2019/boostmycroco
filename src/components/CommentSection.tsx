@@ -12,6 +12,7 @@ interface Comment {
   user_name: string;
   content: string;
   created_at: string;
+  status: string;
 }
 
 export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipSlug: string }) {
@@ -35,7 +36,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         const data = await res.json();
         setComments(Array.isArray(data) ? data : data.data || []);
       }
-    } catch (err) {
+    } catch {
       console.error('Failed to load comments');
     } finally {
       setLoading(false);
@@ -47,11 +48,12 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
     setError('');
     setSuccessMsg('');
 
-    if (!content.trim() || content.trim().length < 3) {
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length < 3) {
       setError('Comment must be at least 3 characters.');
       return;
     }
-    if (content.trim().length > 1000) {
+    if (trimmed.length > 1000) {
       setError('Comment must be under 1000 characters.');
       return;
     }
@@ -71,7 +73,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         },
         body: JSON.stringify({
           tip_id: tipId,
-          content: content.trim(),
+          content: trimmed,
           turnstile_token: turnstile.token,
         }),
       });
@@ -81,10 +83,18 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         throw new Error(data.error || data.message || 'Failed to post comment.');
       }
 
+      const data = await res.json();
+
       setContent('');
-      setSuccessMsg('Comment posted successfully!');
-      turnstile.reset();
-      setTimeout(() => setSuccessMsg(''), 3000);
+      turnstile.rerender();
+
+      // If the comment contains a URL, it goes to pending
+      if (data.status === 'pending') {
+        setSuccessMsg('Your comment has been submitted and is awaiting moderation.');
+      } else {
+        setSuccessMsg('Comment posted successfully!');
+      }
+      setTimeout(() => setSuccessMsg(''), 5000);
       fetchComments();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred.');
@@ -156,9 +166,9 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium resize-none bg-white text-sm"
             />
-            <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
               <span className="text-xs text-slate-400">{content.length}/1000</span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
                 <button
                   type="submit"
