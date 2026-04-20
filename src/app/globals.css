@@ -20,10 +20,12 @@
 @layer base {
   html {
     @apply scroll-smooth;
+    touch-action: manipulation;
   }
   body {
     @apply bg-bg text-text antialiased;
     font-family: 'Inter', sans-serif;
+    touch-action: manipulation;
   }
 
   /* Scrollbar */
