@@ -9,7 +9,6 @@ import { BookOpen, Calendar, ChevronLeft, Code2, ExternalLink, HelpCircle, Refre
 import {
   getRelatedTips,
   getTip,
-  getTipSitemapEntries,
   isOrganizationAuthor,
   tipAuthor,
   tipCanonical,
@@ -26,12 +25,11 @@ export const revalidate = 3600;
 type Params = Promise<{ slug: string }>;
 
 /** Pre-builds every published tip; tips added later are built on their first visit. */
+// Nothing is prerendered at build time: each tip renders on its first visit and is then cached (revalidate below),
+// like requests and members. Prerendering every tip made each build fetch one API page per tip, and with a new tip
+// every day that soon goes past the API's limit of 60 requests a minute per address, which fails the Vercel build.
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  try {
-    return (await getTipSitemapEntries()).filter((tip) => isSafeSlug(tip.slug)).map((tip) => ({ slug: tip.slug }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 async function loadTip(slug: string): Promise<Tip> {

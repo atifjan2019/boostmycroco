@@ -14,6 +14,7 @@ import {
 } from '@/lib/site';
 
 const ADSENSE_CLIENT = 'ca-pub-4404208402043493';
+const GA_MEASUREMENT_ID = 'G-49GRTTFY43';
 
 // Pinch-zoom stays allowed (no maximumScale / userScalable): blocking it fails accessibility checks.
 export const viewport: Viewport = {
@@ -84,6 +85,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {children}
         </AuthProvider>
+        {/* Google Analytics 4 (owner's tag, 19 Oct 2026): loads as soon as the page is interactive so every visit counts.
+            Page changes inside the app are tracked by GA4's enhanced measurement (browser history events).
+            Never give these scripts id="gtag" or id="dataLayer": an element id becomes a window property. */}
+        <Script
+          id="ga4-gtag-js"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script
+          id="ga4-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_MEASUREMENT_ID}');
+            `,
+          }}
+        />
         {/* Ads and session recording load when the browser is idle, after the page itself.
             Ids are hyphenated on purpose: an element id becomes a window property, and id="smartlook"
             would make window.smartlook the <script> element, so the snippet below would skip its setup. */}
