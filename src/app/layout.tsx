@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   title: 'BoostMyCroco — Crocoblock Community Marketplace',
   description: 'Post requests, get quotes, and connect with expert Crocoblock developers in the BoostMyCroco community.',
   icons: { icon: '/Favi.png', apple: '/Favi.png' },
+  // Google Search Console ownership check. Keep it: removing the tag un-verifies the property.
+  verification: { google: '293QMIQnWeoKui3y-Xzv4Al-UaX_q8M-sfFUz1Lpc30' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
