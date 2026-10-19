@@ -1,24 +1,40 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Rocket, ClipboardList, Users, MessageSquareQuote, CheckCircle2, Gift, CircleDollarSign, Megaphone } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { API_BASE, DEFAULT_DESCRIPTION, DEFAULT_TITLE, pageMetadata } from '@/lib/site';
+import { formatDate } from '@/lib/text';
 
 interface Stats { total_requests: number; total_members: number; total_quotes: number; finished: number; }
-interface Request { id: number; title: string; status: string; type: string; created_at: string; author_name: string; }
+interface Request { id: number; slug?: string | null; title: string; status: string; type: string; created_at: string; author_name: string; }
 
-export default function HomePage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [recent, setRecent] = useState<Request[]>([]);
+// Rendered on the server so the stats and recent requests are in the HTML; refreshed every 10 minutes.
+export const revalidate = 600;
 
-  useEffect(() => {
-    fetch('/api/stats').then(r => r.json()).then(d => {
-      setStats(d.stats);
-      setRecent(d.recent_requests);
-    });
-  }, []);
+export const metadata: Metadata = pageMetadata({
+  title: { absolute: DEFAULT_TITLE },
+  description: DEFAULT_DESCRIPTION,
+  path: '/',
+});
+
+async function getHomeData(): Promise<{ stats: Stats | null; recent: Request[] }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/stats`, { next: { revalidate: 600 }, headers: { Accept: 'application/json' } });
+    if (!res.ok) return { stats: null, recent: [] };
+    const data = await res.json();
+    return {
+      stats: data?.stats ?? null,
+      recent: Array.isArray(data?.recent_requests) ? data.recent_requests : [],
+    };
+  } catch {
+    // API unreachable: the page still renders, without the stats and recent requests.
+    return { stats: null, recent: [] };
+  }
+}
+
+export default async function HomePage() {
+  const { stats, recent } = await getHomeData();
 
   return (
     <div className="min-h-screen flex flex-col pt-16">
@@ -70,7 +86,7 @@ export default function HomePage() {
                 ].map(s => (
                   <div key={s.label} className="text-center p-8 bg-white rounded-2xl border border-border shadow-sm">
                     <div className="text-slate-400 mb-3">{s.icon}</div>
-                    <div className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight">{s.value?.toLocaleString()}</div>
+                    <div className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight">{s.value?.toLocaleString('en-GB')}</div>
                     <div className="text-sm font-semibold text-slate-500 mt-2 uppercase tracking-wide">{s.label}</div>
                   </div>
                 ))}
@@ -112,14 +128,14 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recent.map(r => (
-                  <Link key={r.id} href={`/requests/${r.id}`} className="card p-6 block">
+                  <Link key={r.id} href={`/requests/${r.slug || r.id}`} className="card p-6 block">
                     <div className="flex justify-between items-center mb-4">
                       <span className={`badge badge-${r.status?.toLowerCase()}`}>{r.status}</span>
                       <span className={`badge badge-${r.type?.toLowerCase()}`}>{r.type}</span>
                     </div>
                     <div className="font-bold text-slate-800 text-[15px] leading-snug mb-3 line-clamp-2">{r.title}</div>
                     <div className="text-xs font-semibold text-slate-500">
-                      by {r.author_name} <span className="mx-1 font-normal">•</span> {new Date(r.created_at).toLocaleDateString()}
+                      by {r.author_name} <span className="mx-1 font-normal">•</span> {formatDate(r.created_at, 'short')}
                     </div>
                   </Link>
                 ))}

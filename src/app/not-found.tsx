@@ -2,11 +2,10 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Home, ArrowLeft, SearchX } from 'lucide-react';
+import type { Metadata } from 'next';
+import { NOT_FOUND_METADATA } from '@/lib/site';
 
-export const metadata = {
-  title: 'Page Not Found | BoostMyCroco',
-  description: 'The requested page could not be found.',
-};
+export const metadata: Metadata = NOT_FOUND_METADATA;
 
 export default function NotFound() {
   return (

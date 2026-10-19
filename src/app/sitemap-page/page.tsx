@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Globe, BookOpen, Users, FileText, LogIn, UserPlus, Briefcase } from 'lucide-react';
+import { Globe, BookOpen, Users, FileText, LogIn, UserPlus, Briefcase, Mail, Shield, Scale } from 'lucide-react';
 
 interface Tip { id: number; title: string; slug: string; created_at: string; }
 
@@ -16,6 +16,9 @@ const staticLinks = [
   { label: 'Tips & Tricks', href: '/tips-and-tricks', icon: BookOpen },
   { label: 'Login', href: '/login', icon: LogIn },
   { label: 'Register', href: '/register', icon: UserPlus },
+  { label: 'Contact Us', href: '/contact', icon: Mail },
+  { label: 'Privacy Policy', href: '/privacy-policy', icon: Shield },
+  { label: 'Terms & Conditions', href: '/terms-and-conditions', icon: Scale },
 ];
 
 export default function SitemapPage() {
@@ -24,17 +27,17 @@ export default function SitemapPage() {
   useEffect(() => {
     async function loadAllTips() {
       const all: Tip[] = [];
-      let page = 1;
-      let totalPages = 1;
-      while (page <= totalPages) {
-        const res = await fetch(`/api/tips-and-tricks?page=${page}`);
+      // Stop at last_page when the API sends it, otherwise when every tip is loaded or a page comes back empty
+      // (the API's page size is not fixed, so it is never assumed).
+      for (let page = 1; page <= 100; page++) {
+        const res = await fetch(`/api/tips-and-tricks?page=${page}&per_page=50`);
         if (!res.ok) break;
         const data = await res.json();
-        const batch = data.tips || [];
-        const total = data.total || 0;
+        const batch: Tip[] = data.tips || [];
+        if (batch.length === 0) break;
         all.push(...batch);
-        totalPages = Math.ceil(total / 12);
-        page++;
+        const lastPage = Number(data.last_page) || 0;
+        if (lastPage ? page >= lastPage : all.length >= (Number(data.total) || 0)) break;
       }
       setTips(all);
     }

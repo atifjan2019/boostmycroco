@@ -1,121 +1,207 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CommentSectionWrapper from '@/components/CommentSectionWrapper';
-import { Calendar, ChevronLeft, Code2, HelpCircle } from 'lucide-react';
+import JsonLd from '@/components/JsonLd';
+import { BookOpen, Calendar, ChevronLeft, Code2, ExternalLink, HelpCircle, RefreshCw, User } from 'lucide-react';
+import {
+  getRelatedTips,
+  getTip,
+  getTipSitemapEntries,
+  isOrganizationAuthor,
+  tipAuthor,
+  tipCanonical,
+  tipDescription,
+  type Tip,
+} from '@/lib/tips';
+import { absoluteUrl, DEFAULT_OG_IMAGE, isSafeSlug, SITE_NAME, SITE_URL } from '@/lib/site';
+import { parseCustomSchema, reconcileCustomSchema } from '@/lib/jsonld';
+import { escapeAttribute, formatDate, isoDate } from '@/lib/text';
 
-interface Faq { question: string; answer: string; }
-interface Tip { 
-  id: number; 
-  title: string; 
-  content: string; 
-  created_at: string; 
-  slug: string; 
-  featured_image?: string; 
-  meta_title?: string; 
-  meta_description?: string; 
-  schema_markup?: string; 
-  image_alt_text?: string; 
-  code?: string; 
-  text_after_code?: string; 
-  faqs?: Faq[]; 
-  og_title?: string; 
-  og_description?: string; 
-  og_image_url?: string; 
-  twitter_card_type?: string; 
-  twitter_title?: string; 
-  twitter_description?: string; 
-  canonical_url?: string; 
-  author_name?: string; 
-}
+// Incremental static regeneration: each tip page is rebuilt at most once an hour.
+export const revalidate = 3600;
 
-async function getTip(slug: string): Promise<Tip | null> {
+type Params = Promise<{ slug: string }>;
+
+/** Pre-builds every published tip; tips added later are built on their first visit. */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tips-and-tricks/${slug}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.error) return null;
-    return data;
-  } catch (err) {
-    return null;
+    return (await getTipSitemapEntries()).filter((tip) => isSafeSlug(tip.slug)).map((tip) => ({ slug: tip.slug }));
+  } catch {
+    return [];
   }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
+async function loadTip(slug: string): Promise<Tip> {
+  if (!isSafeSlug(slug)) notFound();
   const tip = await getTip(slug);
-  
-  if (!tip) {
-    return { title: 'Post not found - BoostMyCroco' };
-  }
+  if (!tip) notFound();
+  return tip;
+}
 
-  const canonicalUrl = tip.canonical_url || `https://www.boostmycroco.com/tips-and-tricks/${slug}`;
+// Player and app cards need extra fields a tip does not have, so only the two image cards are allowed.
+const TWITTER_CARDS = ['summary', 'summary_large_image'] as const;
+type TwitterCard = (typeof TWITTER_CARDS)[number];
+
+function twitterCard(value: string | null): TwitterCard {
+  return TWITTER_CARDS.find((card) => card === value) ?? 'summary_large_image';
+}
+
+function shareImage(tip: Tip) {
+  const url = tip.og_image_url || tip.featured_image;
+  return url ? { url, alt: tip.image_alt_text || tip.title } : DEFAULT_OG_IMAGE;
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params;
+  const tip = await loadTip(slug);
+
+  const description = tipDescription(tip);
+  const canonical = tipCanonical(tip);
+  const image = shareImage(tip);
+  const author = tipAuthor(tip);
+  const ogTitle = tip.og_title || tip.meta_title || tip.title;
 
   return {
-    title: tip.meta_title || `${tip.title} - BoostMyCroco`,
-    description: tip.meta_description || 'Check out this tip on BoostMyCroco.',
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    // An editor-written SEO title is used exactly as written; otherwise "<title> | BoostMyCroco".
+    title: tip.meta_title ? { absolute: tip.meta_title } : tip.title,
+    description,
+    alternates: { canonical },
+    authors: [{ name: author }],
     openGraph: {
-      title: tip.og_title || tip.meta_title || tip.title,
-      description: tip.og_description || tip.meta_description || undefined,
-      images: tip.og_image_url || tip.featured_image ? [tip.og_image_url || tip.featured_image!] : [],
       type: 'article',
+      siteName: SITE_NAME,
+      locale: 'en_US',
+      url: canonical,
+      title: ogTitle,
+      description: tip.og_description || description,
+      images: [image],
+      publishedTime: isoDate(tip.created_at),
+      modifiedTime: isoDate(tip.updated_at) ?? isoDate(tip.created_at),
+      authors: [author],
     },
     twitter: {
-      card: (tip.twitter_card_type as any) || 'summary_large_image',
-      title: tip.twitter_title || tip.og_title || tip.meta_title || tip.title,
-      description: tip.twitter_description || tip.og_description || tip.meta_description || undefined,
+      card: twitterCard(tip.twitter_card_type),
+      title: tip.twitter_title || ogTitle,
+      description: tip.twitter_description || tip.og_description || description,
+      images: [image.url],
     },
   };
 }
 
-export default async function TipDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const tip = await getTip(slug);
+/** Adds alt text (when missing) and lazy loading to images inside the tip's HTML. */
+function enhanceImages(html: string, fallbackAlt: string): string {
+  return html.replace(/<img\b([^>]*?)\s*\/?>/gi, (_match, attrs: string) => {
+    let out = attrs;
+    if (!/\salt\s*=/i.test(out)) out += ` alt="${escapeAttribute(fallbackAlt)}"`;
+    if (!/\sloading\s*=/i.test(out)) out += ' loading="lazy"';
+    if (!/\sdecoding\s*=/i.test(out)) out += ' decoding="async"';
+    return `<img${out}>`;
+  });
+}
 
-  if (!tip) return (
-    <div className="min-h-screen flex flex-col pt-16 bg-white">
-      <Navbar />
-      <div className="flex-1 text-center py-32 text-slate-500 font-medium">Post not found.</div>
-      <Footer />
-    </div>
-  );
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
 
-  const canonicalUrl = tip.canonical_url || `https://www.boostmycroco.com/tips-and-tricks/${slug}`;
+/** True when the tip was changed at least a day after it was published. */
+function wasUpdated(tip: Tip): boolean {
+  if (!tip.updated_at || !tip.created_at) return false;
+  const published = new Date(tip.created_at).getTime();
+  const updated = new Date(tip.updated_at).getTime();
+  return Number.isFinite(published) && Number.isFinite(updated) && updated - published > 24 * 60 * 60 * 1000;
+}
 
-  const schema = tip.schema_markup ? null : {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": canonicalUrl
+function buildStructuredData(tip: Tip, pageUrl: string, description: string): unknown[] {
+  const author = tipAuthor(tip);
+  // The image the page shows first; the share-only og_image_url and the site default only when it has none.
+  const image = absoluteUrl(tip.featured_image || shareImage(tip).url);
+  const published = isoDate(tip.created_at);
+  const modified = isoDate(tip.updated_at) ?? published;
+
+  // Facts every article node must state exactly as the page shows them (byline, dates, address).
+  const facts = {
+    ...(published ? { datePublished: published } : {}),
+    ...(modified ? { dateModified: modified } : {}),
+    author: isOrganizationAuthor(author)
+      ? { '@type': 'Organization', name: author, url: SITE_URL }
+      : { '@type': 'Person', name: author },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
+    url: pageUrl,
+  };
+  const defaults = {
+    headline: tip.title,
+    description,
+    image: [image],
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: { '@type': 'ImageObject', url: absoluteUrl('/Favi.png') },
     },
-    "headline": tip.title,
-    "image": tip.featured_image ? [tip.featured_image] : [],
-    "datePublished": tip.created_at,
-    "dateModified": tip.created_at,
-    "author": tip.author_name 
-      ? { "@type": "Person", "name": tip.author_name }
-      : { "@type": "Organization", "name": "BoostMyCroco", "url": "https://www.boostmycroco.com" }
   };
 
-  const processedContent = tip.content?.replace(/<img(.*?)>/gi, (match, attrs) => {
-    if (!/alt=["']/i.test(attrs)) {
-      return `<img${attrs} alt="${(tip.image_alt_text || tip.title).replace(/"/g, '&quot;')}">`;
-    }
-    return match;
-  });
+  const article = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    ...defaults,
+    ...facts,
+    ...(tip.sources.length > 0 ? { citation: tip.sources.map((source) => source.url) } : {}),
+  };
+
+  // Schema an editor wrote by hand is kept (invalid JSON is ignored), but its FAQ and breadcrumb parts are
+  // replaced by the ones built from what the page shows, and its article facts are corrected.
+  const custom = reconcileCustomSchema(parseCustomSchema(tip.schema_markup), facts, defaults, ['FAQPage', 'BreadcrumbList']);
+
+  const faqPage =
+    tip.faqs.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: tip.faqs.map((faq) => ({
+            '@type': 'Question',
+            name: faq.question,
+            acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+          })),
+        }
+      : null;
+
+  const breadcrumbs = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Tips & Tricks', item: absoluteUrl('/tips-and-tricks') },
+      { '@type': 'ListItem', position: 3, name: tip.title, item: pageUrl },
+    ],
+  };
+
+  return [custom.hasArticle ? null : article, custom.schema, faqPage, breadcrumbs].filter(Boolean);
+}
+
+export default async function TipDetailPage({ params }: { params: Params }) {
+  const { slug } = await params;
+  const tip = await loadTip(slug);
+  const { tips: related, fromApi: relatedFromApi } = await getRelatedTips(tip);
+
+  const description = tipDescription(tip);
+  const pageUrl = absoluteUrl(tipCanonical(tip));
+  const author = tipAuthor(tip);
+  const fallbackAlt = tip.image_alt_text || tip.title;
+  const content = enhanceImages(tip.content, fallbackAlt);
+  const textAfterCode = tip.text_after_code ? enhanceImages(tip.text_after_code, fallbackAlt) : '';
 
   return (
     <div className="min-h-screen flex flex-col pt-16 bg-white">
-      {tip.schema_markup ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: tip.schema_markup }} />
-      ) : (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      )}
+      {buildStructuredData(tip, pageUrl, description).map((schema, i) => (
+        <JsonLd key={i} data={schema} />
+      ))}
       <Navbar />
       <main className="flex-1">
         <article className="max-w-3xl mx-auto px-6 py-8">
@@ -127,20 +213,36 @@ export default async function TipDetailPage({ params }: { params: Promise<{ slug
             <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight text-balance">
               {tip.title}
             </h1>
-            <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
-              <Calendar className="w-4 h-4" />
-              Published on {new Date(tip.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-slate-500 font-medium text-sm">
+              <span className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                {author}
+              </span>
+              <span className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>
+                  Published on <time dateTime={isoDate(tip.created_at)}>{formatDate(tip.created_at)}</time>
+                </span>
+              </span>
+              {wasUpdated(tip) && (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  <span>
+                    Updated <time dateTime={isoDate(tip.updated_at)}>{formatDate(tip.updated_at)}</time>
+                  </span>
+                </span>
+              )}
             </div>
           </header>
 
           {tip.featured_image && (
             <div className="mb-8 rounded-2xl overflow-hidden shadow-lg border border-slate-100">
-              <img src={tip.featured_image} alt={tip.image_alt_text || tip.title} fetchPriority="high" decoding="async" className="w-full h-auto object-cover max-h-[500px]" />
+              <img src={tip.featured_image} alt={fallbackAlt} fetchPriority="high" decoding="async" className="w-full h-auto object-cover max-h-[500px]" />
             </div>
           )}
 
           <div className="prose prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary hover:prose-a:text-primary-dark prose-img:rounded-xl prose-img:shadow-md">
-            <div dangerouslySetInnerHTML={{ __html: processedContent || '' }} />
+            <div dangerouslySetInnerHTML={{ __html: content }} />
           </div>
 
           {tip.code && (
@@ -157,13 +259,13 @@ export default async function TipDetailPage({ params }: { params: Promise<{ slug
             </div>
           )}
 
-          {tip.text_after_code && (
+          {textAfterCode && (
             <div className="mt-8 prose prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary hover:prose-a:text-primary-dark prose-img:rounded-xl prose-img:shadow-md">
-              <div dangerouslySetInnerHTML={{ __html: tip.text_after_code }} />
+              <div dangerouslySetInnerHTML={{ __html: textAfterCode }} />
             </div>
           )}
 
-          {tip.faqs && tip.faqs.length > 0 && (
+          {tip.faqs.length > 0 && (
             <div className="mt-12">
               <div className="flex items-center gap-2 mb-6">
                 <HelpCircle className="w-5 h-5 text-primary" />
@@ -185,8 +287,54 @@ export default async function TipDetailPage({ params }: { params: Promise<{ slug
             </div>
           )}
 
+          {tip.sources.length > 0 && (
+            <section className="mt-12">
+              <div className="flex items-center gap-2 mb-4">
+                <ExternalLink className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-bold text-slate-900">Sources</h2>
+              </div>
+              <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-600 marker:text-slate-400">
+                {tip.sources.map((source) => (
+                  <li key={source.url}>
+                    <a href={source.url} target="_blank" rel="nofollow noopener noreferrer" className="font-semibold text-primary hover:text-primary-dark break-words">
+                      {source.title}
+                    </a>{' '}
+                    <span className="text-slate-400">({hostname(source.url)})</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {related.length > 0 && (
+            <section className="mt-14 pt-10 border-t border-slate-100">
+              <div className="flex items-center gap-2 mb-6">
+                <BookOpen className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-bold text-slate-900">{relatedFromApi ? 'Related tips' : 'Latest tips'}</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {related.map((r) => (
+                  <Link key={r.slug} href={`/tips-and-tricks/${r.slug}`} className="card overflow-hidden flex flex-col group">
+                    {r.featured_image ? (
+                      <div className="h-32 overflow-hidden border-b border-slate-100">
+                        <img src={r.featured_image} alt={r.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    ) : (
+                      <div className="bg-gradient-to-br from-slate-100 to-slate-50 h-32 flex items-center justify-center border-b border-slate-100">
+                        <BookOpen className="w-10 h-10 text-slate-300 group-hover:text-primary transition-colors duration-300" strokeWidth={1.5} />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <h3 className="font-bold text-sm leading-snug text-slate-900 group-hover:text-primary transition-colors line-clamp-3">{r.title}</h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Comments Section */}
-          <CommentSectionWrapper tipId={tip.id} tipSlug={slug} />
+          <CommentSectionWrapper tipId={tip.id} tipSlug={tip.slug} />
         </article>
       </main>
       <Footer />

@@ -1,50 +1,101 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import JsonLd from '@/components/JsonLd';
+import {
+  absoluteUrl,
+  DEFAULT_DESCRIPTION,
+  DEFAULT_OG_IMAGE,
+  DEFAULT_TITLE,
+  SITE_NAME,
+  SITE_URL,
+  TITLE_TEMPLATE,
+} from '@/lib/site';
 
+const ADSENSE_CLIENT = 'ca-pub-4404208402043493';
+
+// Pinch-zoom stays allowed (no maximumScale / userScalable): blocking it fails accessibility checks.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
+// No canonical here on purpose: a canonical in the root layout would be inherited by every page
+// that does not set its own. Each page sets its canonical (see pageMetadata in src/lib/site.ts).
 export const metadata: Metadata = {
-  title: 'BoostMyCroco — Crocoblock Community Marketplace',
-  description: 'Post requests, get quotes, and connect with expert Crocoblock developers in the BoostMyCroco community.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: DEFAULT_TITLE,
+    template: TITLE_TEMPLATE,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
   icons: { icon: '/Favi.png', apple: '/Favi.png' },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'en_US',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
+  },
   // Google Search Console ownership check. Keep it: removing the tag un-verifies the property.
   verification: { google: '293QMIQnWeoKui3y-Xzv4Al-UaX_q8M-sfFUz1Lpc30' },
+  // AdSense site ownership, so verification does not depend on the (now lazy-loaded) ad script.
+  other: { 'google-adsense-account': ADSENSE_CLIENT },
+};
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: absoluteUrl('/Favi.png'),
+  description: DEFAULT_DESCRIPTION,
+};
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_NAME,
+  url: SITE_URL,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "BoostMyCroco",
-    "url": "https://www.boostmycroco.com",
-    "logo": "https://www.boostmycroco.com/Favi.png",
-    "description": "Post requests, get quotes, and connect with expert Crocoblock developers in the BoostMyCroco community."
-  };
-
   return (
     <html lang="en">
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-        />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4404208402043493"
-          crossOrigin="anonymous"
-        />
+        <JsonLd data={organizationSchema} />
+        <JsonLd data={websiteSchema} />
         <script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           async
           defer
         />
-        <script
+      </head>
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        {/* Ads and session recording load when the browser is idle, after the page itself.
+            Ids are hyphenated on purpose: an element id becomes a window property, and id="smartlook"
+            would make window.smartlook the <script> element, so the snippet below would skip its setup. */}
+        <Script
+          id="adsense-script"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          strategy="lazyOnload"
+          crossOrigin="anonymous"
+        />
+        <Script
+          id="smartlook-init"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               window.smartlook||(function(d) {
@@ -56,11 +107,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
-      </head>
-      <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
       </body>
     </html>
   );

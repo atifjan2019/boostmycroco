@@ -1,11 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Scale } from 'lucide-react';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata = {
-  title: 'Terms & Conditions | BoostMyCroco',
+export const metadata: Metadata = pageMetadata({
+  title: 'Terms & Conditions',
   description: 'Read the terms and conditions for using the BoostMyCroco platform.',
-};
+  path: '/terms-and-conditions',
+});
 
 export default function TermsPage() {
   return (

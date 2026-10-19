@@ -1,11 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Shield } from 'lucide-react';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata = {
-  title: 'Privacy Policy | BoostMyCroco',
+export const metadata: Metadata = pageMetadata({
+  title: 'Privacy Policy',
   description: 'Learn how BoostMyCroco collects, uses, and protects your personal information.',
-};
+  path: '/privacy-policy',
+});
 
 export default function PrivacyPolicyPage() {
   return (

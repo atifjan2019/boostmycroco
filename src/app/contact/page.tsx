@@ -2,11 +2,14 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Mail, MessageSquare, Send, MapPin, Phone } from 'lucide-react';
 import ContactForm from './ContactForm';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata = {
-  title: 'Contact Us | BoostMyCroco',
-  description: 'Get in touch with the BoostMyCroco team for any questions or support.',
-};
+export const metadata: Metadata = pageMetadata({
+  title: 'Contact Us',
+  description: 'Get in touch with the BoostMyCroco team for questions about requests, quotes, your account or the Crocoblock community.',
+  path: '/contact',
+});
 
 export default function ContactPage() {
   return (
