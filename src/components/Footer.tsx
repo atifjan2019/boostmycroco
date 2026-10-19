@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import CookieSettingsButton from '@/components/CookieSettingsButton';
 
 export default function Footer() {
   return (
@@ -36,6 +37,7 @@ export default function Footer() {
               {label}
             </Link>
           ))}
+          <CookieSettingsButton className="block text-left text-text-muted text-sm mb-2 hover:text-primary transition-colors cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark" />
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-8 pt-6 border-t border-border flex justify-between items-center flex-wrap gap-4">

@@ -3,6 +3,8 @@ import Script from 'next/script';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import JsonLd from '@/components/JsonLd';
+import CookieConsent from '@/components/CookieConsent';
+import { ADSENSE_CLIENT, GA_MEASUREMENT_ID, gaConsentInitScript } from '@/lib/consent';
 import {
   absoluteUrl,
   DEFAULT_DESCRIPTION,
@@ -12,9 +14,6 @@ import {
   SITE_URL,
   TITLE_TEMPLATE,
 } from '@/lib/site';
-
-const ADSENSE_CLIENT = 'ca-pub-4404208402043493';
-const GA_MEASUREMENT_ID = 'G-49GRTTFY43';
 
 // Pinch-zoom stays allowed (no maximumScale / userScalable): blocking it fails accessibility checks.
 export const viewport: Viewport = {
@@ -49,7 +48,7 @@ export const metadata: Metadata = {
   },
   // Google Search Console ownership check. Keep it: removing the tag un-verifies the property.
   verification: { google: '293QMIQnWeoKui3y-Xzv4Al-UaX_q8M-sfFUz1Lpc30' },
-  // AdSense site ownership, so verification does not depend on the (now lazy-loaded) ad script.
+  // AdSense site ownership, so verification does not depend on the ad script (it only loads after consent).
   other: { 'google-adsense-account': ADSENSE_CLIENT },
 };
 
@@ -82,51 +81,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        {/* Cookie banner first in the DOM so keyboard users reach it early. It also loads AdSense and Smartlook,
+            and only after the visitor accepts (AdSense on every page, Smartlook never on /login, /register or
+            /dashboard). Cloudflare Turnstile in <head> is a strictly necessary security check and stays as is. */}
+        <CookieConsent />
         <AuthProvider>
           {children}
         </AuthProvider>
-        {/* Google Analytics 4 (owner's tag, 19 Oct 2026): loads as soon as the page is interactive so every visit counts.
-            Page changes inside the app are tracked by GA4's enhanced measurement (browser history events).
+        {/* Google Analytics 4 (owner's tag, 19 Oct 2026) with Google Consent Mode v2. It loads for every visit:
+            the init script sets consent to "denied" by default (no cookies, cookieless pings only) and switches it
+            to "granted" at once when the visitor has already accepted. It runs before gtag.js so the default
+            is in the dataLayer before anything else. Page changes inside the app are tracked by GA4's enhanced
+            measurement (browser history events).
             Never give these scripts id="gtag" or id="dataLayer": an element id becomes a window property. */}
+        <Script
+          id="ga4-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: gaConsentInitScript() }}
+        />
         <Script
           id="ga4-gtag-js"
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
-        />
-        <Script
-          id="ga4-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}');
-            `,
-          }}
-        />
-        {/* Ads and session recording load when the browser is idle, after the page itself.
-            Ids are hyphenated on purpose: an element id becomes a window property, and id="smartlook"
-            would make window.smartlook the <script> element, so the snippet below would skip its setup. */}
-        <Script
-          id="adsense-script"
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-          strategy="lazyOnload"
-          crossOrigin="anonymous"
-        />
-        <Script
-          id="smartlook-init"
-          strategy="lazyOnload"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.smartlook||(function(d) {
-                var o=smartlook=function(){ o.api.push(arguments)},h=d.getElementsByTagName('head')[0];
-                var c=d.createElement('script');o.api=new Array();c.async=true;c.type='text/javascript';
-                c.charset='utf-8';c.src='https://web-sdk.smartlook.com/recorder.js';h.appendChild(c);
-              })(document);
-              smartlook('init', '8d07c72b0956b8474c6b83331719135b9e7e9c30', { region: 'eu' });
-            `,
-          }}
         />
       </body>
     </html>

@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
             <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3">
               Privacy Policy
             </h1>
-            <p className="text-slate-500 font-medium text-sm">Last updated: April 6, 2026</p>
+            <p className="text-slate-500 font-medium text-sm">Last updated: October 19, 2026</p>
           </header>
 
           <div className="prose prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary">
@@ -80,23 +80,72 @@ export default function PrivacyPolicyPage() {
             </ul>
             <p>We do not sell your personal information to third parties.</p>
 
-            <h2>5. Cookies and Tracking</h2>
+            <h2 id="cookies" className="scroll-mt-24">5. Cookies and Tracking</h2>
             <p>
-              We use cookies and similar technologies to enhance your browsing experience, analyze usage patterns,
-              and serve relevant content. You can control cookie preferences through your browser settings.
+              Cookies are small files stored by your browser. Some are needed for the Platform to work; others are
+              optional and are only used if you agree. When you first visit, a banner at the bottom of the page asks for
+              your choice. &ldquo;Accept all&rdquo; and &ldquo;Reject all&rdquo; are equally easy, and nothing optional is
+              switched on before you choose.
             </p>
-            <p>We use the following types of cookies:</p>
+
+            <h3>Strictly necessary (always on)</h3>
             <ul>
-              <li><strong>Essential cookies:</strong> Required for the Platform to function properly</li>
-              <li><strong>Analytics cookies:</strong> Help us understand how visitors interact with the Platform</li>
-              <li><strong>Functional cookies:</strong> Remember your preferences and settings</li>
+              <li>
+                <strong>Sign-in:</strong> when you log in, a sign-in token is kept in your browser&rsquo;s local storage
+                (<code>boost_token</code>) so you stay logged in. It is removed when you log out.
+              </li>
+              <li>
+                <strong>Security:</strong> Cloudflare Turnstile checks that forms are sent by people, not bots.
+              </li>
+              <li>
+                <strong>Your cookie choice:</strong> the <code>bmc_consent</code> cookie (with a copy in local storage)
+                remembers whether you accepted or rejected, the date and the version of this notice.
+              </li>
             </ul>
+
+            <h3>Optional (only with your consent)</h3>
+            <ul>
+              <li>
+                <strong>Google Analytics (visit statistics):</strong> counts visits and shows which pages are used, from
+                which kind of device and roughly where in the world. With your consent it sets the <code>_ga</code> and{' '}
+                <code>_ga_&lt;ID&gt;</code> cookies (kept up to 2 years). Without consent it sets no cookies: it only
+                sends basic, cookieless signals (for example that a page was viewed) with no identifier for your device,
+                which Google uses to estimate visit totals.
+              </li>
+              <li>
+                <strong>Google AdSense (ads):</strong> shows advertisements that help fund the Platform and may use
+                cookies to show and measure ads, including ads based on your interests. AdSense is not loaded at all
+                unless you accept.
+              </li>
+              <li>
+                <strong>Smartlook (anonymous session recordings):</strong> records how pages are used (clicks, scrolling,
+                mouse movement) so we can find and fix problems with the site. We do not let it record what you type
+                into forms, and it does not record the log-in, registration or member dashboard pages. Recordings are
+                stored in the EU. Smartlook is not loaded at all unless you accept.
+              </li>
+            </ul>
+
+            <h3>How long we keep your choice</h3>
+            <p>
+              Your choice is kept for 6 months. After that, or if we add a new service that needs your consent, the
+              banner asks you again.
+            </p>
+
+            <h3>Changing your choice</h3>
+            <p>
+              Select &ldquo;Cookie settings&rdquo; in the site footer to open the banner again and choose
+              &ldquo;Accept all&rdquo; or &ldquo;Reject all&rdquo;. If you reject after accepting, we delete the cookies
+              these services stored on this site (such as the Google Analytics cookies), stop Smartlook and reload the
+              page so that AdSense and Smartlook are no longer loaded.
+              You can also delete or block cookies in your browser settings.
+            </p>
 
             <h2>6. Third-Party Services</h2>
             <p>Our Platform may integrate with third-party services including:</p>
             <ul>
-              <li><strong>Smartlook:</strong> Session recording and analytics</li>
-              <li><strong>Google AdSense:</strong> Advertisement delivery</li>
+              <li><strong>Google Analytics:</strong> Visit statistics (only with your consent, see section 5)</li>
+              <li><strong>Google AdSense:</strong> Advertisement delivery (only with your consent)</li>
+              <li><strong>Smartlook:</strong> Anonymous session recordings (only with your consent)</li>
               <li><strong>Cloudflare Turnstile:</strong> Bot protection and CAPTCHA verification</li>
             </ul>
             <p>These services have their own privacy policies governing the use of your information.</p>
