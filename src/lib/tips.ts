@@ -1,4 +1,4 @@
-import { API_BASE } from '@/lib/site';
+import { API_BASE, isSafeSlug } from '@/lib/site';
 import { bodyText, plainText, truncate } from '@/lib/text';
 
 /**
@@ -39,6 +39,12 @@ export interface TipCard {
   updated_at: string | null;
 }
 
+/** A page the tip links to by title and slug (the community request a tip answers). */
+export interface PageLink {
+  title: string;
+  slug: string;
+}
+
 export interface RelatedTip {
   title: string;
   slug: string;
@@ -64,6 +70,8 @@ export interface Tip extends TipCard {
   sources: TipSource[];
   /** null when the API did not send `related` (older API). */
   related: RelatedTip[] | null;
+  /** The community request this guide answers, when there is one (null with the older API). */
+  source_request: PageLink | null;
 }
 
 export interface TipListPage {
@@ -178,6 +186,14 @@ function toRelated(value: unknown): RelatedTip[] | null {
     .slice(0, 3);
 }
 
+/** {title, slug} with a slug safe to put in a URL, else null. */
+function toPageLink(value: unknown): PageLink | null {
+  if (!isRaw(value)) return null;
+  const title = str(value.title);
+  const slug = str(value.slug);
+  return title && slug && isSafeSlug(slug) ? { title, slug } : null;
+}
+
 function toTip(raw: Raw): Tip {
   return {
     ...toCard(raw),
@@ -197,6 +213,7 @@ function toTip(raw: Raw): Tip {
     canonical_url: str(raw.canonical_url),
     sources: toSources(raw.sources),
     related: toRelated(raw.related),
+    source_request: toPageLink(raw.source_request),
   };
 }
 

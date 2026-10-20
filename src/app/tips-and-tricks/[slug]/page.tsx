@@ -285,6 +285,15 @@ export default async function TipDetailPage({ params }: { params: Params }) {
             </div>
           )}
 
+          {tip.source_request && (
+            <p className="mt-12 text-slate-600 leading-relaxed">
+              This guide answers a question from our community:{' '}
+              <Link href={`/requests/${tip.source_request.slug}`} className="font-semibold text-primary hover:text-primary-dark">
+                {tip.source_request.title}
+              </Link>
+            </p>
+          )}
+
           {tip.sources.length > 0 && (
             <section className="mt-12">
               <div className="flex items-center gap-2 mb-4">

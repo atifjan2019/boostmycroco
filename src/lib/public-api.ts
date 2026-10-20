@@ -4,6 +4,8 @@
  * even if the backend starts returning it again.
  */
 
+import { isSafeSlug } from '@/lib/site';
+
 type Obj = Record<string, unknown>;
 
 function isObj(value: unknown): value is Obj {
@@ -64,7 +66,15 @@ export function publicMemberProfile(m: Obj) {
   };
 }
 
-/** /requests/[slug] page: the request and its quotes (never the quoter's email). */
+/** {title, slug} of a linked page, only with a slug that is safe in a URL. */
+function pageLink(v: unknown): { title: string; slug: string } | null {
+  if (!isObj(v)) return null;
+  const title = text(v.title)?.trim();
+  const slug = text(v.slug)?.trim();
+  return title && slug && isSafeSlug(slug) ? { title, slug } : null;
+}
+
+/** /requests/[slug] page: the request and its quotes (never the quoter's email), and the guide written for it. */
 export function publicRequestDetail(r: Obj) {
   return {
     id: scalar(r.id),
@@ -84,5 +94,6 @@ export function publicRequestDetail(r: Obj) {
       message: text(q.message),
       created_at: text(q.created_at),
     })),
+    related_tip: pageLink(r.related_tip),
   };
 }

@@ -22,6 +22,8 @@ interface Request {
   id: number; title: string; description: string; status: string; type: string;
   language: string; author_name: string; created_at: string; budget: number;
   quotes: Quote[];
+  /** The guide written for this request, if one is published. */
+  related_tip?: { title: string; slug: string } | null;
 }
 
 const QUOTE_FIELDS = ['price', 'message'];
@@ -170,9 +172,18 @@ export default function RequestDetailPage() {
             {req.budget > 0 && <span className="flex items-center gap-1.5 text-emerald-600 font-bold"><CircleDollarSign className="w-4 h-4" /> ${req.budget}</span>}
           </div>
 
-          <div className="prose prose-slate prose-p:leading-relaxed max-w-none mb-14 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+          <div className={`prose prose-slate prose-p:leading-relaxed max-w-none ${req.related_tip ? 'mb-6' : 'mb-14'} bg-white border border-slate-200 rounded-2xl p-8 shadow-sm`}>
             <div dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
           </div>
+
+          {req.related_tip && (
+            <p className="mb-14 text-slate-600 leading-relaxed">
+              Related guide:{' '}
+              <Link href={`/tips-and-tricks/${req.related_tip.slug}`} className="font-semibold text-primary hover:text-primary-dark">
+                {req.related_tip.title}
+              </Link>
+            </p>
+          )}
 
           {/* Quotes */}
           <div>
