@@ -1,20 +1,27 @@
 import { NextResponse } from 'next/server';
+import { API_BASE, isSafeSlug } from '@/lib/site';
+import { isRecord, publicRequestDetail } from '@/lib/public-api';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params;
+  if (!isSafeSlug(slug)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
   try {
-    const { slug } = await params;
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000';
-    
-    const res = await fetch(`${backendUrl}/api/requests/${slug}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/api/requests/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 60 },
+      headers: { Accept: 'application/json' },
+    });
     if (res.status === 404) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    if (!res.ok) throw new Error('Backend error');
-    
-    const data = await res.json();
-    return NextResponse.json(data);
+    if (!res.ok) throw new Error(`Backend answered ${res.status}`);
+
+    const data: unknown = await res.json();
+    if (!isRecord(data)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(publicRequestDetail(data));
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch request' }, { status: 500 });
+    console.error('Error fetching request:', error);
+    return NextResponse.json({ error: 'Failed to fetch request' }, { status: 502 });
   }
 }

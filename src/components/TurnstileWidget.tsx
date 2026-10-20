@@ -3,7 +3,8 @@
 import { AlertCircle } from 'lucide-react';
 
 interface TurnstileWidgetProps {
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  /** useTurnstile().containerRef */
+  containerRef: React.Ref<HTMLDivElement>;
   error: string;
   isEnabled: boolean;
 }
@@ -14,7 +15,7 @@ export default function TurnstileWidget({ containerRef, error, isEnabled }: Turn
     <div className="space-y-2">
       <div ref={containerRef} />
       {error && (
-        <p className="text-red-500 text-xs font-medium flex items-center gap-1 mt-1">
+        <p className="text-red-500 text-xs font-medium flex items-center gap-1 mt-1" role="alert">
           <AlertCircle className="w-3 h-3" /> {error}
         </p>
       )}

@@ -7,6 +7,8 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: any) => void;
   logout: () => void;
+  /** Reloads the signed-in user (with their requests) from the API, e.g. after posting a request. */
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -62,8 +64,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('boost_token');
   };
 
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://admin.boostmycroco.com';
+      const response = await fetch(`${apiUrl}/api/user`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+      });
+      if (response.ok) setUser(await response.json());
+    } catch {
+      // Keep the user we have; the next page load fetches it again.
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, refreshUser, loading }}>
         {children}
     </AuthContext.Provider>
   );

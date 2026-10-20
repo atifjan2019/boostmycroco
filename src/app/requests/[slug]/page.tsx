@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { User, Calendar, CircleDollarSign } from 'lucide-react';
@@ -8,13 +8,38 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useTurnstile } from '@/hooks/useTurnstile';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import FieldError from '@/components/FieldError';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { focusFirstError, generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
+import { MAX_AMOUNT } from '@/lib/request-form';
+import { safeMemberHtml } from '@/lib/safe-html';
 
-interface Quote { id: number; name: string; email: string; price: number; message: string; created_at: string; }
+// The fields /api/requests/[slug] returns (see src/lib/public-api.ts).
+interface Quote { id: number; name: string; price: number; message: string; created_at: string; }
 interface Request {
   id: number; title: string; description: string; status: string; type: string;
   language: string; author_name: string; created_at: string; budget: number;
-  assigned_to: string; quotes: Quote[];
+  quotes: Quote[];
+}
+
+const QUOTE_FIELDS = ['price', 'message'];
+
+/** The quote in a 201 answer from POST /api/quotes ({message, quote}), with only the fields this page shows. */
+function createdQuote(data: unknown): Quote | null {
+  const q = data && typeof data === 'object' ? (data as { quote?: unknown }).quote : null;
+  if (!q || typeof q !== 'object') return null;
+  const o = q as Record<string, unknown>;
+  const id = Number(o.id);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    name: typeof o.name === 'string' ? o.name : '',
+    price: Number(o.price) || 0,
+    message: typeof o.message === 'string' ? o.message : '',
+    created_at: typeof o.created_at === 'string' ? o.created_at : new Date().toISOString(),
+  };
 }
 
 export default function RequestDetailPage() {
@@ -27,10 +52,20 @@ export default function RequestDetailPage() {
   const [quoteMessage, setQuoteMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState({ type: '', text: '' });
+  const { fieldErrors, setFieldErrors, clearFieldError, ariaFor } = useFieldErrors();
   const turnstile = useTurnstile();
 
+  // Member HTML, cleaned again in the browser (src/lib/safe-html.ts) before it goes into the page.
+  const descriptionHtml = useMemo(() => safeMemberHtml(req?.description), [req]);
+  const quoteHtml = useMemo(() => new Map((req?.quotes ?? []).map(q => [q.id, safeMemberHtml(q.message)])), [req]);
+
   useEffect(() => {
-    if (slug) fetch(`/api/requests/${slug}`).then(r => r.json()).then(d => { setReq(d); setLoading(false); });
+    if (!slug) return;
+    fetch(`/api/requests/${slug}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setReq(d && typeof d === 'object' && 'id' in d ? (d as Request) : null))
+      .catch(() => setReq(null))
+      .finally(() => setLoading(false));
   }, [slug]);
 
   if (loading) return (
@@ -60,31 +95,53 @@ export default function RequestDetailPage() {
 
     setSubmitting(true);
     setSubmitMessage({ type: '', text: '' });
+    setFieldErrors({});
     try {
-      const res = await fetch(`/api/quotes`, {
+      const res = await fetch(`${BROWSER_API_BASE}/api/quotes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           request_id: req.id,
           price: parseFloat(quotePrice) || 0,
-          message: quoteMessage
+          message: quoteMessage,
+          ...turnstile.tokenField(),
         })
       });
-      const data = await res.json();
       if (res.ok) {
-        setSubmitMessage({ type: 'success', text: 'Quote submitted successfully!' });
+        // The token is spent either way.
+        turnstile.reset();
         setQuotePrice('');
         setQuoteMessage('');
-        setTimeout(() => window.location.reload(), 1500);
+        // Shown from the API's answer: the page's own data is cached for up to a minute, so a reload could miss it.
+        const added = createdQuote(await res.json().catch(() => null));
+        if (added) {
+          setReq(r => (r ? { ...r, quotes: [...(r.quotes || []), added] } : r));
+          setSubmitMessage({ type: 'success', text: 'Quote submitted successfully! It is listed below.' });
+        } else {
+          setSubmitMessage({ type: 'success', text: 'Quote submitted successfully!' });
+          setTimeout(() => window.location.reload(), 1500);
+        }
       } else {
-        setSubmitMessage({ type: 'error', text: data.message || 'Failed to submit quote.' });
+        const failure = await readFailure(res, {
+          fields: QUOTE_FIELDS,
+          fallback: 'Your quote could not be sent. Please try again in a moment.',
+          unauthorized: 'Your session has expired. Please log in again.',
+        });
         turnstile.reset();
+        // The API answers 403 when the member has no profile yet.
+        const text = res.status === 403 && /profile/i.test(failure.message)
+          ? 'Please complete your profile (Dashboard > Profile Settings) before sending a quote.'
+          : generalMessage(failure);
+        setFieldErrors(failure.fields);
+        setSubmitMessage(text ? { type: 'error', text } : { type: '', text: '' });
+        focusFirstError(failure.fields, QUOTE_FIELDS, 'quote');
       }
-    } catch (err) {
-      setSubmitMessage({ type: 'error', text: 'An unexpected error occurred.' });
+    } catch {
+      setSubmitMessage({ type: 'error', text: NETWORK_ERROR });
       turnstile.reset();
     }
     setSubmitting(false);
@@ -114,7 +171,7 @@ export default function RequestDetailPage() {
           </div>
 
           <div className="prose prose-slate prose-p:leading-relaxed max-w-none mb-14 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-            <div dangerouslySetInnerHTML={{ __html: req.description || '' }} />
+            <div dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
           </div>
 
           {/* Quotes */}
@@ -137,17 +194,23 @@ export default function RequestDetailPage() {
                 <form className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" onSubmit={handleQuoteSubmit}>
                   <h3 className="text-lg font-bold text-slate-900 mb-4">Submit a Quote</h3>
                   {submitMessage.text && (
-                    <div className={`p-4 mb-4 text-sm rounded-lg ${submitMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
+                    <div role={submitMessage.type === 'error' ? 'alert' : 'status'} className={`p-4 mb-4 text-sm rounded-lg ${submitMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
                       {submitMessage.text}
                     </div>
                   )}
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Your Proposed Price ($)</label>
-                    <input type="number" min="0" step="1" required className="input" placeholder="e.g. 150" value={quotePrice} onChange={e => setQuotePrice(e.target.value)} />
+                    <label htmlFor="quote-price" className="block text-sm font-semibold text-slate-700 mb-1">Your Proposed Price ($)</label>
+                    <input id="quote-price" type="number" min="0" max={MAX_AMOUNT} step="1" required className="input" placeholder="e.g. 150"
+                      {...ariaFor('price', 'quote-price')}
+                      value={quotePrice} onChange={e => { setQuotePrice(e.target.value); clearFieldError('price'); }} />
+                    <FieldError id="quote-price-error" message={fieldErrors.price} />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Message / Proposal</label>
-                    <textarea required className="input min-h-[120px]" placeholder="Briefly describe how you can help..." value={quoteMessage} onChange={e => setQuoteMessage(e.target.value)}></textarea>
+                    <label htmlFor="quote-message" className="block text-sm font-semibold text-slate-700 mb-1">Message / Proposal</label>
+                    <textarea id="quote-message" required maxLength={10000} className="input min-h-[120px]" placeholder="Briefly describe how you can help..."
+                      {...ariaFor('message', 'quote-message')}
+                      value={quoteMessage} onChange={e => { setQuoteMessage(e.target.value); clearFieldError('message'); }}></textarea>
+                    <FieldError id="quote-message-error" message={fieldErrors.message} />
                   </div>
 
                   <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
@@ -172,7 +235,7 @@ export default function RequestDetailPage() {
                       {q.price > 0 && <span className="text-emerald-600 font-black text-lg">${q.price}</span>}
                     </div>
                     <div className="text-slate-600 text-[15px] leading-relaxed mb-4 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: q.message || '' }} />
+                      dangerouslySetInnerHTML={{ __html: quoteHtml.get(q.id) ?? '' }} />
                     <div className="text-slate-400 text-xs font-semibold pt-4 border-t border-slate-100 mt-2">
                       {new Date(q.created_at).toLocaleDateString()}
                     </div>

@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTurnstile } from '@/hooks/useTurnstile';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
+
+/** Fields Laravel validates on POST /api/contact that have an input on this form. */
+const CONTACT_FIELDS = ['first_name', 'last_name', 'email', 'whatsapp_number', 'subject', 'message'];
 
 // --- Validation helpers ---
 const VALID_NAME_REGEX = /^[a-zA-ZÀ-ÿ\s'-]{2,50}$/;
@@ -98,18 +103,28 @@ export default function ContactForm() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/contact', {
+      // Straight to the API (like login and the other forms), so its Turnstile check and its per-connection limit
+      // see the visitor's own IP address rather than the website server's.
+      const res = await fetch(`${BROWSER_API_BASE}/api/contact`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, turnstile_token: turnstile.token })
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ...formData, ...turnstile.tokenField() })
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to send message');
+        // Field messages under their inputs; the bot check, rate limits and anything else in the box at the top.
+        // Server errors never show their own text.
+        const failure = await readFailure(res, {
+          fields: CONTACT_FIELDS,
+          fallback: 'Your message could not be sent. Please try again in a moment.',
+        });
+        turnstile.reset();
+        setFieldErrors(failure.fields);
+        setError(generalMessage(failure) || (Object.keys(failure.fields).length ? 'Please check the highlighted fields.' : ''));
+        return;
       }
       setSuccess(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred.');
+    } catch {
+      setError(NETWORK_ERROR);
       turnstile.reset();
     } finally {
       setIsSubmitting(false);

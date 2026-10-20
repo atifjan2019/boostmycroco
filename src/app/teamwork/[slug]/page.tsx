@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 interface MemberDetail {
-  id: number; display_name: string; user_email: string; user_registered: string;
+  id: number; display_name: string; user_registered: string;
   slug: string; request_count: number; quote_count: number; profile_image_url?: string;
   requests: { id: number; title: string; status: string; type: string; created_at: string; slug?: string }[];
   quotes: { id: number; price: number; created_at: string; request_title: string; }[];

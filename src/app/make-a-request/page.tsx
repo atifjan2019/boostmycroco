@@ -8,20 +8,37 @@ import Footer from '@/components/Footer';
 import { Rocket, Gift, CircleDollarSign, Megaphone, PartyPopper, LogIn } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurnstile } from '@/hooks/useTurnstile';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import FieldError from '@/components/FieldError';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { focusFirstError, generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
+import { isProfileComplete, MAX_AMOUNT, REQUEST_FIELDS, REQUEST_LANGUAGES, REQUEST_TYPE_HINTS, REQUEST_TYPES, requestPayload, type RequestFormValues } from '@/lib/request-form';
+import { isSafeSlug } from '@/lib/site';
 
-const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Arabic', 'Hindi'];
+const TYPE_ICONS = {
+  Free: <Gift className="w-8 h-8" />,
+  Quote: <CircleDollarSign className="w-8 h-8" />,
+  Offer: <Megaphone className="w-8 h-8" />,
+};
 
 export default function MakeARequestPage() {
-  const { user, token, loading: authLoading } = useAuth();
+  const { user, token, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ title: '', description: '', type: 'Free', language: 'English', budget: '' });
+  const [form, setForm] = useState<RequestFormValues>({ title: '', description: '', type: 'Free', language: 'English', budget: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [newSlug, setNewSlug] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const { fieldErrors, setFieldErrors, clearFieldError, ariaFor } = useFieldErrors();
   const turnstile = useTurnstile();
 
-  const profile = user?.client_profile;
-  const profileComplete = profile?.first_name && profile?.last_name && profile?.phone && profile?.country && (profile?.email_contact || user?.email);
+  const update = (name: keyof RequestFormValues, value: string) => {
+    setForm(f => ({ ...f, [name]: value }));
+    clearFieldError(name);
+  };
+
+  const profileComplete = isProfileComplete(user);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,17 +51,40 @@ export default function MakeARequestPage() {
     }
 
     setSubmitting(true);
+    setFormError('');
+    setFieldErrors({});
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://admin.boostmycroco.com';
-      const res = await fetch(`${apiUrl}/api/requests`, {
+      const res = await fetch(`${BROWSER_API_BASE}/api/requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ ...form, budget: parseFloat(form.budget) || 0, author_name: user?.name }),
+        body: JSON.stringify({ ...requestPayload(form), ...turnstile.tokenField() }),
       });
-      if (res.ok) setSubmitted(true);
-      else { alert('Failed to submit request.'); turnstile.reset(); }
-    } catch { alert('Connection error.'); turnstile.reset(); }
-    finally { setSubmitting(false); }
+      if (res.ok) {
+        // 201 with the new request, including the slug its page lives at.
+        const created: unknown = await res.json().catch(() => null);
+        const slug = created && typeof created === 'object' ? (created as { slug?: unknown }).slug : null;
+        setNewSlug(isSafeSlug(slug) ? slug : '');
+        setSubmitted(true);
+        void refreshUser();
+        return;
+      }
+      // The budget input is only on screen for paid types.
+      const visible = REQUEST_FIELDS.filter(f => f !== 'budget' || form.type !== 'Free');
+      const failure = await readFailure(res, {
+        fields: visible,
+        fallback: 'Your request could not be posted. Please try again in a moment.',
+        unauthorized: 'Your session has expired. Please log in again.',
+      });
+      turnstile.reset();
+      setFieldErrors(failure.fields);
+      setFormError(generalMessage(failure));
+      focusFirstError(failure.fields, REQUEST_FIELDS, 'make-request');
+    } catch {
+      setFormError(NETWORK_ERROR);
+      turnstile.reset();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) return (
@@ -55,7 +95,10 @@ export default function MakeARequestPage() {
           <div className="flex justify-center mb-6 text-emerald-500"><PartyPopper className="w-16 h-16" /></div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Request Submitted!</h2>
           <p className="text-slate-600 font-medium mb-10 leading-relaxed">Your request is now live and mentors will be in touch.</p>
-          <Link href="/dashboard/requests" className="btn btn-primary px-8 py-3 w-full">View My Requests</Link>
+          <div className="flex flex-col gap-3">
+            {newSlug && <Link href={`/requests/${newSlug}`} className="btn btn-primary px-8 py-3 w-full">View Your Request</Link>}
+            <Link href="/dashboard/requests" className={`btn ${newSlug ? 'btn-outline' : 'btn-primary'} px-8 py-3 w-full`}>View My Requests</Link>
+          </div>
         </div>
       </main>
       <Footer />
@@ -97,57 +140,67 @@ export default function MakeARequestPage() {
           )}
 
           <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-8">
+            {formError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100" role="alert">{formError}</div>
+            )}
+
             <div>
               <label className="font-bold text-slate-800 text-sm mb-4 block">Request Type</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { value: 'Free', emoji: <Gift className="w-8 h-8" />, desc: 'Community help', activeColor: 'text-primary' },
-                  { value: 'Quote', emoji: <CircleDollarSign className="w-8 h-8" />, desc: 'Paid project', activeColor: 'text-primary' },
-                  { value: 'Offer', emoji: <Megaphone className="w-8 h-8" />, desc: 'Service offer', activeColor: 'text-primary' },
-                ].map(t => (
+                {REQUEST_TYPES.map((value, i) => (
                   <button
-                    key={t.value} type="button"
-                    onClick={() => setForm(f => ({ ...f, type: t.value }))}
+                    key={value} type="button" id={i === 0 ? 'make-request-type' : undefined}
+                    aria-pressed={form.type === value}
+                    onClick={() => update('type', value)}
                     className={`p-5 rounded-xl text-center cursor-pointer transition-all duration-200 border-2
-                      ${form.type === t.value
+                      ${form.type === value
                         ? 'bg-green-50 border-primary shadow-sm shadow-green-100/50'
                         : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
                       }`}>
-                    <div className={`flex justify-center mb-3 ${form.type === t.value ? t.activeColor : 'text-slate-400'}`}>
-                      {t.emoji}
+                    <div className={`flex justify-center mb-3 ${form.type === value ? 'text-primary' : 'text-slate-400'}`}>
+                      {TYPE_ICONS[value]}
                     </div>
-                    <div className="font-bold text-sm text-slate-900 mb-1">{t.value}</div>
-                    <div className="text-xs text-slate-500 font-medium">{t.desc}</div>
+                    <div className="font-bold text-sm text-slate-900 mb-1">{value}</div>
+                    <div className="text-xs text-slate-500 font-medium">{REQUEST_TYPE_HINTS[value]}</div>
                   </button>
                 ))}
               </div>
+              <FieldError id="make-request-type-error" message={fieldErrors.type} />
             </div>
 
             <div>
-              <label className="font-bold text-slate-800 text-sm mb-2 block">Title *</label>
-              <input className="input" required placeholder="Brief title for your request" value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <label htmlFor="make-request-title" className="font-bold text-slate-800 text-sm mb-2 block">Title *</label>
+              <input id="make-request-title" className="input" required minLength={3} maxLength={255} placeholder="Brief title for your request" value={form.title}
+                {...ariaFor('title', 'make-request-title')}
+                onChange={e => update('title', e.target.value)} />
+              <FieldError id="make-request-title-error" message={fieldErrors.title} />
             </div>
 
             <div>
-              <label className="font-bold text-slate-800 text-sm mb-2 block">Description *</label>
-              <textarea className="input resize-y min-h-[160px]" required rows={6} placeholder="Describe your problem or what you need in detail..."
-                value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              <label htmlFor="make-request-description" className="font-bold text-slate-800 text-sm mb-2 block">Description *</label>
+              <textarea id="make-request-description" className="input resize-y min-h-[160px]" required maxLength={20000} rows={6} placeholder="Describe your problem or what you need in detail..."
+                {...ariaFor('description', 'make-request-description')}
+                value={form.description} onChange={e => update('description', e.target.value)} />
+              <FieldError id="make-request-description-error" message={fieldErrors.description} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="font-bold text-slate-800 text-sm mb-2 block">Language</label>
-                <select className="select w-full" value={form.language}
-                  onChange={e => setForm(f => ({ ...f, language: e.target.value }))}>
-                  {LANGUAGES.map(l => <option key={l}>{l}</option>)}
+                <label htmlFor="make-request-language" className="font-bold text-slate-800 text-sm mb-2 block">Language</label>
+                <select id="make-request-language" className="select w-full" value={form.language}
+                  {...ariaFor('language', 'make-request-language')}
+                  onChange={e => update('language', e.target.value)}>
+                  {REQUEST_LANGUAGES.map(l => <option key={l}>{l}</option>)}
                 </select>
+                <FieldError id="make-request-language-error" message={fieldErrors.language} />
               </div>
               {form.type !== 'Free' && (
                 <div className="animate-fadeIn">
-                  <label className="font-bold text-slate-800 text-sm mb-2 block">Budget ($)</label>
-                  <input className="input" type="number" placeholder="0" min="0" required
-                    value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} />
+                  <label htmlFor="make-request-budget" className="font-bold text-slate-800 text-sm mb-2 block">Budget ($)</label>
+                  <input id="make-request-budget" className="input" type="number" placeholder="0" min="0" max={MAX_AMOUNT} step="0.01" required
+                    {...ariaFor('budget', 'make-request-budget')}
+                    value={form.budget} onChange={e => update('budget', e.target.value)} />
+                  <FieldError id="make-request-budget-error" message={fieldErrors.budget} />
                 </div>
               )}
             </div>

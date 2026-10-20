@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-interface Member { id: number; display_name: string; user_email: string; user_registered: string; slug: string; request_count: number; quote_count: number; profile_image_url?: string; }
+interface Member { id: number; display_name: string; user_registered: string; slug: string; request_count: number; quote_count: number; profile_image_url?: string; }
 
 export default function TeamworkPage() {
   const [members, setMembers] = useState<Member[]>([]);

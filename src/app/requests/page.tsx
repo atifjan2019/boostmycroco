@@ -77,7 +77,7 @@ export default function RequestsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {requests.map(r => (
-                <Link key={r.id} href={`/requests/${r.slug}`} className="card p-6 block flex flex-col h-full animate-fadeIn">
+                <Link key={r.id} href={`/requests/${r.slug || r.id}`} className="card p-6 block flex flex-col h-full animate-fadeIn">
                   <div className="flex justify-between items-center mb-4">
                     <span className={`badge badge-${r.status?.toLowerCase()}`}>{r.status}</span>
                     <span className={`badge badge-${r.type?.toLowerCase()}`}>{r.type}</span>

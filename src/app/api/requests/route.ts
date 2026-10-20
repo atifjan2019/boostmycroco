@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { API_BASE } from '@/lib/site';
 
 export async function GET(request: Request) {
   const { search } = new URL(request.url);
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/requests${search}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/api/requests${search}`, { next: { revalidate: 60 }, headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error('Failed to fetch requests');
     const data = await res.json();
     return NextResponse.json(data);

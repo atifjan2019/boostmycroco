@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, Send, AlertCircle, User, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTurnstile } from '@/hooks/useTurnstile';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
 import Link from 'next/link';
 
 interface Comment {
@@ -107,14 +111,22 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
   const [successMsg, setSuccessMsg] = useState('');
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyingToName, setReplyingToName] = useState<string>('');
+  const turnstile = useTurnstile();
 
   useEffect(() => {
     fetchComments();
   }, [tipSlug]);
 
-  async function fetchComments() {
+  async function fetchComments(fresh = false) {
     try {
-      const res = await fetch(`/api/tips-and-tricks/${tipSlug}/comments`);
+      // After a post, read straight from the API: the site's own /api route keeps comments for 30 seconds, so the
+      // new comment would not be in it yet.
+      const res = fresh
+        ? await fetch(`${BROWSER_API_BASE}/api/tips-and-tricks/${encodeURIComponent(tipSlug)}/comments`, {
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+          })
+        : await fetch(`/api/tips-and-tricks/${encodeURIComponent(tipSlug)}/comments`);
       if (res.ok) {
         const data = await res.json();
         setComments(Array.isArray(data) ? data : data.data || []);
@@ -158,26 +170,42 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
       return;
     }
 
+    if (turnstile.isEnabled && !turnstile.token) {
+      turnstile.setError('Please complete the verification.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/tips-and-tricks/${tipSlug}/comments`, {
+      // Straight to the API (not the /api proxy) so its bot check and rate limit see the visitor's own IP.
+      const res = await fetch(`${BROWSER_API_BASE}/api/tips-and-tricks/${encodeURIComponent(tipSlug)}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           tip_id: tipId,
           content: trimmed,
           parent_id: replyingTo,
+          ...turnstile.tokenField(),
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || data.message || 'Failed to post comment.');
+        const failure = await readFailure(res, {
+          fields: [],
+          fallback: 'Your comment could not be posted. Please try again in a moment.',
+          unauthorized: 'Your session has expired. Please log in again.',
+        });
+        turnstile.reset();
+        setError(generalMessage(failure));
+        return;
       }
 
+      // A token works once: get a fresh one for the next comment.
+      turnstile.reset();
       const data = await res.json();
       setContent('');
       setReplyingTo(null);
@@ -189,9 +217,10 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
         setSuccessMsg('Comment posted successfully!');
       }
       setTimeout(() => setSuccessMsg(''), 5000);
-      fetchComments();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred.');
+      fetchComments(true);
+    } catch {
+      setError(NETWORK_ERROR);
+      turnstile.reset();
     } finally {
       setSubmitting(false);
     }
@@ -245,7 +274,7 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
             </div>
 
             {error && (
-              <div className="mb-3 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm font-medium flex items-center gap-2">
+              <div className="mb-3 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm font-medium flex items-center gap-2" role="alert">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {error}
               </div>
             )}
@@ -263,6 +292,11 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
               maxLength={1000}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 font-medium resize-none bg-white text-sm"
             />
+            {turnstile.isEnabled && (
+              <div className="mt-3">
+                <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />
+              </div>
+            )}
             <div className="flex items-center justify-between mt-3">
               <span className="text-xs text-slate-400">{content.length}/1000</span>
               <button

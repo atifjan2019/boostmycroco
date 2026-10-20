@@ -5,22 +5,37 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import FieldError from '@/components/FieldError';
 import { useAuth } from '@/context/AuthContext';
 import { useTurnstile } from '@/hooks/useTurnstile';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { focusFirstError, generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
+
+const FIELDS = ['name', 'email', 'password', 'confirm'];
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const { fieldErrors, setFieldErrors, clearFieldError, ariaFor } = useFieldErrors();
   const router = useRouter();
   const { login } = useAuth();
   const turnstile = useTurnstile();
 
+  const update = (name: keyof typeof form, value: string) => {
+    setForm(f => ({ ...f, [name]: value }));
+    clearFieldError(name);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     if (form.password !== form.confirm) {
-      setErrorMsg("Passwords don't match.");
+      const mismatch = { confirm: "Passwords don't match." };
+      setFieldErrors(mismatch);
+      focusFirstError(mismatch, FIELDS, 'register');
       return;
     }
 
@@ -30,32 +45,39 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    setErrorMsg('');
+    setFieldErrors({});
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://admin.boostmycroco.com';
-      const res = await fetch(`${apiUrl}/api/register`, {
+      const res = await fetch(`${BROWSER_API_BASE}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email,
+          password: form.password,
+          password_confirmation: form.confirm,
+          ...turnstile.tokenField(),
+        }),
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = await res.json();
         login(data.token, data.user);
         router.push('/dashboard/profile');
-      } else {
-        if (data.errors) {
-          const firstError = Object.values(data.errors)[0];
-          setErrorMsg(Array.isArray(firstError) ? (firstError as string[])[0] : String(firstError));
-        } else {
-          setErrorMsg(data.message || 'Registration failed.');
-        }
-        turnstile.reset();
+        return;
       }
+      const failure = await readFailure(res, {
+        fields: FIELDS,
+        aliases: { password_confirmation: 'confirm' },
+        fallback: 'Registration failed. Please try again in a moment.',
+      });
+      turnstile.reset();
+      setFieldErrors(failure.fields);
+      setErrorMsg(generalMessage(failure));
+      focusFirstError(failure.fields, FIELDS, 'register');
     } catch {
-      setErrorMsg('Failed to connect to backend.');
+      setErrorMsg(NETWORK_ERROR);
       turnstile.reset();
     } finally {
       setLoading(false);
@@ -74,31 +96,39 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {errorMsg && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100">{errorMsg}</div>
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100" role="alert">{errorMsg}</div>
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Display Name</label>
-              <input type="text" required className="input" placeholder="e.g. John Doe"
-                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <label htmlFor="register-name" className="block text-sm font-bold text-slate-800 mb-2">Display Name</label>
+              <input id="register-name" type="text" required maxLength={100} className="input" placeholder="e.g. John Doe" autoComplete="name"
+                {...ariaFor('name', 'register-name')}
+                value={form.name} onChange={e => update('name', e.target.value)} />
+              <FieldError id="register-name-error" message={fieldErrors.name} />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Email Address</label>
-              <input type="email" required className="input" placeholder="you@example.com"
-                value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              <label htmlFor="register-email" className="block text-sm font-bold text-slate-800 mb-2">Email Address</label>
+              <input id="register-email" type="email" required maxLength={255} className="input" placeholder="you@example.com" autoComplete="email"
+                {...ariaFor('email', 'register-email')}
+                value={form.email} onChange={e => update('email', e.target.value)} />
+              <FieldError id="register-email-error" message={fieldErrors.email} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Password</label>
-                <input type="password" required className="input" placeholder="••••••••"
-                  value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+                <label htmlFor="register-password" className="block text-sm font-bold text-slate-800 mb-2">Password</label>
+                <input id="register-password" type="password" required minLength={8} maxLength={255} className="input" placeholder="••••••••" autoComplete="new-password"
+                  {...ariaFor('password', 'register-password')}
+                  value={form.password} onChange={e => update('password', e.target.value)} />
+                <FieldError id="register-password-error" message={fieldErrors.password} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Confirm Password</label>
-                <input type="password" required className="input" placeholder="••••••••"
-                  value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} />
+                <label htmlFor="register-confirm" className="block text-sm font-bold text-slate-800 mb-2">Confirm Password</label>
+                <input id="register-confirm" type="password" required className="input" placeholder="••••••••" autoComplete="new-password"
+                  {...ariaFor('confirm', 'register-confirm')}
+                  value={form.confirm} onChange={e => update('confirm', e.target.value)} />
+                <FieldError id="register-confirm-error" message={fieldErrors.confirm} />
               </div>
             </div>
 

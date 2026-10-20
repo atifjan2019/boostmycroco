@@ -5,15 +5,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import FieldError from '@/components/FieldError';
 import { useAuth } from '@/context/AuthContext';
 import { useTurnstile } from '@/hooks/useTurnstile';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { BROWSER_API_BASE } from '@/lib/browser-api';
+import { focusFirstError, generalMessage, NETWORK_ERROR, readFailure } from '@/lib/form-errors';
+
+const FIELDS = ['email', 'password'];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const { fieldErrors, setFieldErrors, clearFieldError, ariaFor } = useFieldErrors();
   const router = useRouter();
   const { login } = useAuth();
   const turnstile = useTurnstile();
@@ -28,30 +35,29 @@ export default function LoginPage() {
 
     setLoading(true);
     setErrorMsg('');
+    setFieldErrors({});
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://admin.boostmycroco.com';
-      const res = await fetch(`${apiUrl}/api/login`, {
+      const res = await fetch(`${BROWSER_API_BASE}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ...turnstile.tokenField() }),
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = await res.json();
         login(data.token, data.user);
         router.push('/dashboard');
-      } else {
-        if (data.errors?.email) {
-          setErrorMsg(data.errors.email[0]);
-        } else {
-          setErrorMsg(data.message || 'Login failed.');
-        }
-        turnstile.reset();
+        return;
       }
-    } catch (err) {
-      setErrorMsg('Failed to connect to backend.');
+      const failure = await readFailure(res, { fields: FIELDS, fallback: 'Login failed. Please try again in a moment.' });
+      turnstile.reset();
+      setFieldErrors(failure.fields);
+      setErrorMsg(generalMessage(failure));
+      focusFirstError(failure.fields, FIELDS, 'login');
+    } catch {
+      setErrorMsg(NETWORK_ERROR);
       turnstile.reset();
     } finally {
       setLoading(false);
@@ -70,24 +76,28 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {errorMsg && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100">
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100" role="alert">
                 {errorMsg}
               </div>
             )}
-            
+
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Email Address</label>
-              <input type="email" required className="input" placeholder="you@example.com"
-                value={email} onChange={e => setEmail(e.target.value)} />
+              <label htmlFor="login-email" className="block text-sm font-bold text-slate-800 mb-2">Email Address</label>
+              <input id="login-email" type="email" required className="input" placeholder="you@example.com" autoComplete="email"
+                {...ariaFor('email', 'login-email')}
+                value={email} onChange={e => { setEmail(e.target.value); clearFieldError('email'); }} />
+              <FieldError id="login-email-error" message={fieldErrors.email} />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-bold text-slate-800">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-bold text-slate-800">Password</label>
                 <Link href="/forgot-password" className="text-primary text-xs font-bold hover:underline">Forgot?</Link>
               </div>
-              <input type="password" required className="input" placeholder="••••••••"
-                value={password} onChange={e => setPassword(e.target.value)} />
+              <input id="login-password" type="password" required className="input" placeholder="••••••••" autoComplete="current-password"
+                {...ariaFor('password', 'login-password')}
+                value={password} onChange={e => { setPassword(e.target.value); clearFieldError('password'); }} />
+              <FieldError id="login-password-error" message={fieldErrors.password} />
             </div>
 
             <TurnstileWidget containerRef={turnstile.containerRef} error={turnstile.error} isEnabled={turnstile.isEnabled} />

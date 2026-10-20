@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { safeMessage } from '@/lib/form-errors';
+import { API_BASE } from '@/lib/site';
 
 // --- Server-side validation ---
 const VALID_NAME_REGEX = /^[a-zA-ZÀ-ÿ\s'-]{2,50}$/;
@@ -71,27 +73,6 @@ function validateContactForm(body: Record<string, unknown>): string | null {
   return null;
 }
 
-async function verifyTurnstile(token: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    console.warn('TURNSTILE_SECRET_KEY not set — skipping verification');
-    return true; // Skip if not configured
-  }
-
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token }),
-    });
-    const data = await res.json();
-    return data.success === true;
-  } catch (err) {
-    console.error('Turnstile verification error:', err);
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -102,40 +83,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validationError }, { status: 422 });
     }
 
-    // 2. Verify Cloudflare Turnstile token
-    const turnstileToken = body.turnstile_token;
-    if (process.env.TURNSTILE_SECRET_KEY) {
-      if (!turnstileToken || typeof turnstileToken !== 'string') {
-        return NextResponse.json({ error: 'Please complete the CAPTCHA verification.' }, { status: 422 });
-      }
-      const isHuman = await verifyTurnstile(turnstileToken);
-      if (!isHuman) {
-        return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 403 });
-      }
-    }
+    // 2. The Turnstile token is passed on, never checked here: Laravel checks it on POST /api/contact, and a token
+    //    works only once, so checking it here as well would make Laravel's check fail.
+    //    The contact form itself now posts straight to Laravel (ContactForm.tsx), so the per-connection limit and the
+    //    Turnstile check see the visitor's IP; this route stays for pages loaded before that change.
+    const { first_name, last_name, email, whatsapp_number, subject, message, turnstile_token } = body;
+    const payload = {
+      first_name, last_name, email, whatsapp_number, subject, message,
+      ...(typeof turnstile_token === 'string' && turnstile_token ? { turnstile_token } : {}),
+    };
 
-    // 3. Strip the turnstile token before forwarding to Laravel
-    const { turnstile_token, ...formData } = body;
-
-    // 4. Forward the sanitised request to the Laravel backend
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contact`, {
+    // 3. Forward the checked fields to the Laravel backend
+    const res = await fetch(`${API_BASE}/api/contact`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Failed to submit contact form');
+      // Validation and rate-limit answers are passed on as one short message; server errors never are.
+      if (res.status === 429) {
+        const limited = await res.json().catch(() => ({}));
+        return NextResponse.json({ error: safeMessage(limited?.message) || 'Too many messages. Please wait a minute and try again.' }, { status: 429 });
+      }
+      if (res.status >= 400 && res.status < 500) {
+        const errorData = await res.json().catch(() => ({}));
+        const errors = errorData && typeof errorData.errors === 'object' && errorData.errors ? Object.values(errorData.errors) : [];
+        const first = errors.map(v => safeMessage(Array.isArray(v) ? v[0] : v)).find(Boolean);
+        const message = first || safeMessage(errorData.message) || 'Please check the form and try again.';
+        return NextResponse.json({ error: message }, { status: res.status });
+      }
+      throw new Error(`Backend answered ${res.status}`);
     }
 
     const data = await res.json();
     return NextResponse.json(data, { status: 201 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'An error occurred while submitting the form';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('Contact form error:', error);
+    return NextResponse.json({ error: 'Your message could not be sent. Please try again in a moment.' }, { status: 502 });
   }
 }
