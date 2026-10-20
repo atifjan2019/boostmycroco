@@ -1,4 +1,5 @@
 import { API_BASE } from '@/lib/site';
+import { logUpstreamFailure } from '@/lib/upstream-error';
 
 /**
  * Server-side lookups used only to build page metadata for the client-rendered request and
@@ -17,7 +18,10 @@ async function lookup<T>(path: string): Promise<Lookup<T>> {
       headers: { Accept: 'application/json' },
     });
     if (res.status === 404) return { status: 'missing' };
-    if (!res.ok) return { status: 'error' };
+    if (!res.ok) {
+      await logUpstreamFailure(path, `${API_BASE}${path}`, res);
+      return { status: 'error' };
+    }
     const data: unknown = await res.json();
     if (typeof data !== 'object' || data === null || Array.isArray(data) || 'error' in data) return { status: 'missing' };
     return { status: 'found', data: data as T };

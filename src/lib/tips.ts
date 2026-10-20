@@ -1,4 +1,5 @@
 import { API_BASE, isSafeSlug } from '@/lib/site';
+import { logUpstreamFailure } from '@/lib/upstream-error';
 import { bodyText, plainText, truncate } from '@/lib/text';
 
 /**
@@ -226,11 +227,15 @@ function pageInfo(data: Raw, requestedPage: number, itemCount: number) {
 
 /** One page of the published tips list. Throws when the API cannot be reached. */
 export async function getTipsPage(page: number): Promise<TipListPage> {
-  const res = await fetch(`${API_BASE}/api/tips-and-tricks?page=${page}&per_page=${TIPS_PER_PAGE}`, {
+  const url = `${API_BASE}/api/tips-and-tricks?page=${page}&per_page=${TIPS_PER_PAGE}`;
+  const res = await fetch(url, {
     next: { revalidate: TIP_LIST_REVALIDATE },
     headers: { Accept: 'application/json' },
   });
-  if (!res.ok) throw new Error(`The tips list could not be loaded (HTTP ${res.status}).`);
+  if (!res.ok) {
+    await logUpstreamFailure('tips list', url, res);
+    throw new Error(`The tips list could not be loaded (HTTP ${res.status}).`);
+  }
   const data: unknown = await res.json();
   const body = isRaw(data) ? data : {};
   const tips = (Array.isArray(body.tips) ? body.tips : []).filter(isRaw).map(toCard).filter((tip) => tip.slug !== '');
@@ -242,12 +247,16 @@ export async function getTipsPage(page: number): Promise<TipListPage> {
  * Any other failure throws, so a cached page is kept instead of being replaced by a 404.
  */
 export async function getTip(slug: string): Promise<Tip | null> {
-  const res = await fetch(`${API_BASE}/api/tips-and-tricks/${encodeURIComponent(slug)}`, {
+  const url = `${API_BASE}/api/tips-and-tricks/${encodeURIComponent(slug)}`;
+  const res = await fetch(url, {
     next: { revalidate: TIP_PAGE_REVALIDATE },
     headers: { Accept: 'application/json' },
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`The tip could not be loaded (HTTP ${res.status}).`);
+  if (!res.ok) {
+    await logUpstreamFailure(`tip ${slug}`, url, res);
+    throw new Error(`The tip could not be loaded (HTTP ${res.status}).`);
+  }
   const data: unknown = await res.json();
   if (!isRaw(data) || data.error || !str(data.slug)) return null;
   return toTip(data);
