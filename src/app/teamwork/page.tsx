@@ -1,97 +1,93 @@
-'use client';
-
-import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import JsonLd from '@/components/JsonLd';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import MemberCard from '@/components/MemberCard';
+import Pagination, { listPath } from '@/components/Pagination';
+import MemberSearch from './MemberSearch';
+import { getMembersPage, plural } from '@/lib/community';
+import { breadcrumbList } from '@/lib/jsonld';
+import { pageMetadata, SITE_NAME, SITE_URL } from '@/lib/site';
 
-interface Member { id: number; display_name: string; user_registered: string; slug: string; request_count: number; quote_count: number; profile_image_url?: string; }
+// Server-rendered on each request (it reads ?page=), with the API answers cached for 5 minutes.
+export const revalidate = 300;
 
-export default function TeamworkPage() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+const BASE_PATH = '/teamwork';
 
-  const fetchMembers = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: '12' });
-    if (search) params.set('search', search);
-    const res = await fetch(`/api/members?${params}`);
-    const data = await res.json();
-    setMembers(data.members || []);
-    setTotal(data.total || 0);
-    setLoading(false);
-  }, [search, page]);
+const INTRO =
+  'These are the members of the BoostMyCroco community: people who post Crocoblock and WordPress jobs and the developers who take them on. Open a profile to see the requests a member has posted and the quotes they have sent.';
 
-  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-  const initials = (name: string) => name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
-  const totalPages = Math.ceil(total / 12);
+/** Page number from ?page=. 1 when absent, null when it is not a positive whole number. */
+function parsePage(raw: string | string[] | undefined): number | null {
+  if (raw === undefined) return 1;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!/^\d{1,5}$/.test(value)) return null;
+  const page = parseInt(value, 10);
+  return page >= 1 ? page : null;
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const page = parsePage((await searchParams).page);
+  if (page === null) notFound();
+
+  if (page > 1) {
+    return pageMetadata({
+      title: { absolute: `TeamWork Members: Page ${page} | ${SITE_NAME}` },
+      description: `Page ${page} of the BoostMyCroco TeamWork directory: Crocoblock and WordPress members with the requests they posted and the quotes they sent.`,
+      path: listPath(BASE_PATH, page),
+    });
+  }
+  return pageMetadata({
+    title: 'TeamWork: Crocoblock Community Members',
+    description:
+      'Meet the BoostMyCroco community: Crocoblock and JetEngine developers and site builders, with the requests they posted and the quotes they gave.',
+    path: BASE_PATH,
+  });
+}
+
+export default async function TeamworkPage({ searchParams }: { searchParams: SearchParams }) {
+  const page = parsePage((await searchParams).page);
+  if (page === null) notFound();
+
+  const { items, total, lastPage } = await getMembersPage(page);
+  if (page > 1 && (page > lastPage || items.length === 0)) notFound();
+
+  const crumbs = [
+    { name: 'Home', path: '/' },
+    { name: 'TeamWork', path: BASE_PATH },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col pt-16 bg-slate-50/50">
+      <JsonLd data={breadcrumbList(crumbs, SITE_URL)} />
       <Navbar />
       <main className="flex-1">
         <div className="py-12 border-b border-border bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-6">
-            <h1 className="text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">TeamWork</h1>
-            <p className="text-slate-500 font-medium">{total.toLocaleString()} community members</p>
+            <Breadcrumbs items={crumbs} className="mb-4" />
+            <h1 className="text-4xl font-extrabold mb-3 text-slate-900 tracking-tight">TeamWork</h1>
+            <p className="text-slate-600 leading-relaxed max-w-3xl mb-3">{INTRO}</p>
+            <p className="text-slate-500 font-medium">
+              {plural(total, 'community member')}
+              {page > 1 && <span> · Page {page} of {lastPage}</span>}
+            </p>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="mb-10">
-            <input
-              className="input max-w-sm bg-white shadow-sm"
-              placeholder="Search members..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <svg className="animate-spin w-8 h-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {members.map(m => (
-                <Link key={m.id} href={`/teamwork/${m.slug}`} className="card p-6 text-center block animate-fadeIn">
-                  {m.profile_image_url ? (
-                    <img src={m.profile_image_url} alt={m.display_name} className="w-16 h-16 rounded-full mx-auto mb-4 object-cover shadow-md shadow-slate-200" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-gradient-to-br from-green-500 to-sky-400 flex items-center justify-center font-black text-xl text-white shadow-md shadow-green-500/20">
-                      {initials(m.display_name)}
-                    </div>
-                  )}
-                  <div className="font-bold text-slate-800 text-lg mb-1 truncate">{m.display_name}</div>
-                  <div className="text-slate-500 text-xs font-medium mb-6">
-                    Joined {new Date(m.user_registered).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                  </div>
-                  <div className="flex justify-center gap-6 pt-4 border-t border-slate-100">
-                    {[
-                      { label: 'Requests', value: m.request_count },
-                      { label: 'Quotes', value: m.quote_count },
-                    ].map(s => (
-                      <div key={s.label} className="text-center">
-                        <div className="font-black text-primary text-xl mb-0.5">{s.value}</div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-14">
-              <button className="btn btn-outline bg-white hover:bg-slate-50" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-              <span className="px-4 font-semibold text-slate-600 text-sm">{page} / {totalPages}</span>
-              <button className="btn btn-outline bg-white hover:bg-slate-50" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
-            </div>
-          )}
+          <MemberSearch>
+            {items.length === 0 ? (
+              <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-500 font-medium">No members found.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {items.map((m, i) => <MemberCard key={`${m.slug ?? "m"}-${i}`} member={m} />)}
+              </div>
+            )}
+            <Pagination page={page} lastPage={lastPage} basePath={BASE_PATH} label="TeamWork pages" />
+          </MemberSearch>
         </div>
       </main>
       <Footer />

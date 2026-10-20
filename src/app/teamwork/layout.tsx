@@ -1,18 +1,10 @@
 import type { Metadata } from 'next';
-import { pageMetadata, TITLE_TEMPLATE } from '@/lib/site';
+import { TITLE_TEMPLATE } from '@/lib/site';
 
-const title = 'TeamWork: Crocoblock Community Members';
-
-// The TeamWork page is a client component, so its metadata lives in this server layout.
+// Each page under /teamwork sets its own title, description and canonical. The template is repeated here so a
+// member page's title always ends in "| BoostMyCroco".
 export const metadata: Metadata = {
-  ...pageMetadata({
-    title,
-    description:
-      'Meet the BoostMyCroco community: Crocoblock and JetEngine developers and site builders, with the requests they posted and the quotes they gave.',
-    path: '/teamwork',
-  }),
-  // default + template (not a plain string) so "| BoostMyCroco" still reaches /teamwork/[slug].
-  title: { default: title, template: TITLE_TEMPLATE },
+  title: { default: 'TeamWork: Crocoblock Community Members', template: TITLE_TEMPLATE },
 };
 
 export default function TeamworkLayout({ children }: { children: React.ReactNode }) {

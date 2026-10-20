@@ -92,3 +92,17 @@ export function reconcileCustomSchema(
   if (list.length === 0) return { schema: null, hasArticle: false };
   return { schema: Array.isArray(custom) ? list : list[0], hasArticle };
 }
+
+/** BreadcrumbList for the trail a page shows: names with site paths ("/" for Home), the last one being the page itself. */
+export function breadcrumbList(items: { name: string; path: string }[], siteUrl: string): JsonLdObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: new URL(item.path, siteUrl).toString(),
+    })),
+  };
+}

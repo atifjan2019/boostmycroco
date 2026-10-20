@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { API_BASE, isSafeSlug } from '@/lib/site';
-import { isRecord, publicMemberProfile } from '@/lib/public-api';
+import { isRecord, toMemberProfile } from '@/lib/public-api';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
     const data: unknown = await res.json();
     if (!isRecord(data)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(publicMemberProfile(data));
+    return NextResponse.json(toMemberProfile(data));
   } catch (error) {
     console.error('Error fetching member:', error);
     return NextResponse.json({ error: 'Failed to fetch' }, { status: 502 });

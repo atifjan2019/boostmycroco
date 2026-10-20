@@ -75,6 +75,13 @@
   .badge-free      { @apply bg-purple-50 text-purple-700 border-purple-200; }
   .badge-quote     { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
   .badge-offer     { @apply bg-red-50 text-red-700 border-red-200; }
+  .badge-archived  { @apply bg-slate-100 text-slate-600 border-slate-200; }
+  .badge-other     { @apply bg-slate-50 text-slate-600 border-slate-200; }
+
+  /* Member-written HTML (request descriptions, quote messages): long words and URLs wrap anywhere, and a wide table
+     scrolls inside its own box, so neither can widen the page on a phone. */
+  .member-html { @apply wrap-anywhere; }
+  .member-html table { @apply block max-w-full overflow-x-auto wrap-break-word; }
 }
 
 /* Animations */

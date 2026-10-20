@@ -84,3 +84,23 @@ export function isoDate(value: string | null | undefined): string | undefined {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * "21 Oct 2024" (in UTC), or '' when the value is not a date. Month names are fixed here because browsers and Node
+ * disagree on short month names ("Sep" or "Sept"), which would also make server and browser output differ.
+ */
+export function shortDate(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
+/** "$150" or "$1,250.50" for a price or budget. */
+export function formatMoney(amount: number): string {
+  const fixed = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  const [whole, cents] = fixed.split('.');
+  return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${cents ? `.${cents}` : ''}`;
+}

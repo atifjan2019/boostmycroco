@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { API_BASE, isSafeSlug } from '@/lib/site';
-import { isRecord, publicRequestDetail } from '@/lib/public-api';
+import { isRecord, toRequestDetail } from '@/lib/public-api';
 
 export async function GET(
   _request: Request,
@@ -19,7 +19,7 @@ export async function GET(
 
     const data: unknown = await res.json();
     if (!isRecord(data)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(publicRequestDetail(data));
+    return NextResponse.json(toRequestDetail(data));
   } catch (error) {
     console.error('Error fetching request:', error);
     return NextResponse.json({ error: 'Failed to fetch request' }, { status: 502 });

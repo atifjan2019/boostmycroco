@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { FileText, MessageSquareQuote, ChevronRight, Plus } from 'lucide-react';
+import { statusKey, statusLabel } from '@/lib/request-status';
 
 export default function MyRequestsPage() {
   const { user } = useAuth();
@@ -66,7 +67,7 @@ export default function MyRequestsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`badge badge-${(r.status || 'initied').toLowerCase()}`}>{r.status || 'Initied'}</span>
+                    <span className={`badge badge-${statusKey(r.status) ?? (r.status ? 'other' : 'initied')}`}>{statusLabel(r.status)}</span>
                     <Link href={`/requests/${r.id}`} className="text-slate-400 group-hover:text-primary p-2 rounded-full hover:bg-green-50 transition-colors hidden md:block">
                       <ChevronRight className="w-5 h-5" />
                     </Link>

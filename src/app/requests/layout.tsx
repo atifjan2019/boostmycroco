@@ -1,18 +1,10 @@
 import type { Metadata } from 'next';
-import { pageMetadata, TITLE_TEMPLATE } from '@/lib/site';
+import { TITLE_TEMPLATE } from '@/lib/site';
 
-const title = 'Crocoblock & JetEngine Help Requests';
-
-// The requests page is a client component, so its metadata lives in this server layout.
+// Each page under /requests sets its own title, description and canonical. The template is repeated here so a
+// request page's title always ends in "| BoostMyCroco".
 export const metadata: Metadata = {
-  ...pageMetadata({
-    title,
-    description:
-      'Browse help requests from the Crocoblock community: JetEngine, JetSmartFilters, JetFormBuilder and Elementor projects looking for free help, quotes or offers.',
-    path: '/requests',
-  }),
-  // default + template (not a plain string) so "| BoostMyCroco" still reaches /requests/[slug].
-  title: { default: title, template: TITLE_TEMPLATE },
+  title: { default: 'Crocoblock & JetEngine Help Requests', template: TITLE_TEMPLATE },
 };
 
 export default function RequestsLayout({ children }: { children: React.ReactNode }) {

@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { Rocket, ClipboardList, Users, MessageSquareQuote, CheckCircle2, Gift, CircleDollarSign, Megaphone } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import RequestCard from '@/components/RequestCard';
+import { getRecentRequests } from '@/lib/community';
+import type { RequestCardData } from '@/lib/public-api';
 import { API_BASE, DEFAULT_DESCRIPTION, DEFAULT_TITLE, pageMetadata } from '@/lib/site';
-import { formatDate } from '@/lib/text';
 
 interface Stats { total_requests: number; total_members: number; total_quotes: number; finished: number; }
-interface Request { id: number; slug?: string | null; title: string; status: string; type: string; created_at: string; author_name: string; }
 
 // Rendered on the server so the stats and recent requests are in the HTML; refreshed every 10 minutes.
 export const revalidate = 600;
@@ -18,19 +19,23 @@ export const metadata: Metadata = pageMetadata({
   path: '/',
 });
 
-async function getHomeData(): Promise<{ stats: Stats | null; recent: Request[] }> {
+async function getStats(): Promise<{ stats: Stats | null; recentFallback: unknown }> {
   try {
     const res = await fetch(`${API_BASE}/api/stats`, { next: { revalidate: 600 }, headers: { Accept: 'application/json' } });
-    if (!res.ok) return { stats: null, recent: [] };
+    if (!res.ok) return { stats: null, recentFallback: null };
     const data = await res.json();
-    return {
-      stats: data?.stats ?? null,
-      recent: Array.isArray(data?.recent_requests) ? data.recent_requests : [],
-    };
+    return { stats: data?.stats ?? null, recentFallback: data?.recent_requests };
   } catch {
     // API unreachable: the page still renders, without the stats and recent requests.
-    return { stats: null, recent: [] };
+    return { stats: null, recentFallback: null };
   }
+}
+
+async function getHomeData(): Promise<{ stats: Stats | null; recent: RequestCardData[] }> {
+  const { stats, recentFallback } = await getStats();
+  // Only the card fields: the stats answer's request rows are never passed on as they are.
+  const recent = await getRecentRequests(recentFallback, 6);
+  return { stats, recent };
 }
 
 export default async function HomePage() {
@@ -124,20 +129,11 @@ export default async function HomePage() {
             <div className="max-w-7xl mx-auto px-6">
               <div className="flex justify-between items-center mb-12">
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Recent Requests</h2>
-                <Link href="/requests" className="text-primary text-sm font-bold hover:underline">View all →</Link>
+                <Link href="/requests" className="inline-block py-1 text-primary text-sm font-bold hover:underline">View all →</Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {recent.map(r => (
-                  <Link key={r.id} href={`/requests/${r.slug || r.id}`} className="card p-6 block">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className={`badge badge-${r.status?.toLowerCase()}`}>{r.status}</span>
-                      <span className={`badge badge-${r.type?.toLowerCase()}`}>{r.type}</span>
-                    </div>
-                    <div className="font-bold text-slate-800 text-[15px] leading-snug mb-3 line-clamp-2">{r.title}</div>
-                    <div className="text-xs font-semibold text-slate-500">
-                      by {r.author_name} <span className="mx-1 font-normal">•</span> {formatDate(r.created_at, 'short')}
-                    </div>
-                  </Link>
+                {recent.map((r, i) => (
+                  <RequestCard key={r.slug ?? r.id ?? i} request={r} heading="h3" showExcerpt={false} />
                 ))}
               </div>
             </div>
