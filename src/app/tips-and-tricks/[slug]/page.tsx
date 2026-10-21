@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CommentSectionWrapper from '@/components/CommentSectionWrapper';
 import JsonLd from '@/components/JsonLd';
+import TipPicture from '@/components/TipPicture';
 import { BookOpen, Calendar, ChevronLeft, Code2, ExternalLink, HelpCircle, RefreshCw, User } from 'lucide-react';
 import {
   getRelatedTips,
@@ -238,7 +239,14 @@ export default async function TipDetailPage({ params }: { params: Params }) {
 
           {tip.featured_image && (
             <div className="mb-8 rounded-2xl overflow-hidden shadow-lg border border-slate-100">
-              <img src={tip.featured_image} alt={fallbackAlt} fetchPriority="high" decoding="async" className="w-full h-auto object-cover max-h-[500px]" />
+              <TipPicture
+                image={tip.image}
+                fallbackSrc={tip.featured_image}
+                alt={fallbackAlt}
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority
+                imgClassName="w-full h-auto object-cover max-h-[500px]"
+              />
             </div>
           )}
 
@@ -327,7 +335,13 @@ export default async function TipDetailPage({ params }: { params: Params }) {
                   <Link key={r.slug} href={`/tips-and-tricks/${r.slug}`} className="card overflow-hidden flex flex-col group">
                     {r.featured_image ? (
                       <div className="h-32 overflow-hidden border-b border-slate-100">
-                        <img src={r.featured_image} alt={r.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <TipPicture
+                          image={r.image}
+                          fallbackSrc={r.featured_image}
+                          alt={r.title}
+                          sizes="(max-width: 640px) 100vw, 33vw"
+                          imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                       </div>
                     ) : (
                       <div className="bg-gradient-to-br from-slate-100 to-slate-50 h-32 flex items-center justify-center border-b border-slate-100">

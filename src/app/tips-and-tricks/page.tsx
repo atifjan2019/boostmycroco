@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import JsonLd from '@/components/JsonLd';
+import TipPicture from '@/components/TipPicture';
 import { BookOpen, Calendar } from 'lucide-react';
 import { getTipsPage } from '@/lib/tips';
 import { absoluteUrl, pageMetadata, SITE_URL } from '@/lib/site';
@@ -89,12 +90,13 @@ export default async function TipsAndTricksPage({ searchParams }: { searchParams
                 <Link key={t.id || t.slug} href={`/tips-and-tricks/${t.slug}`} className="card overflow-hidden flex flex-col group block">
                   {t.featured_image ? (
                     <div className="h-48 overflow-hidden border-b border-slate-100">
-                      <img
-                        src={t.featured_image}
+                      <TipPicture
+                        image={t.image}
+                        fallbackSrc={t.featured_image}
                         alt={t.image_alt_text || t.title}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         loading={index < 3 ? 'eager' : 'lazy'}
-                        decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                   ) : (

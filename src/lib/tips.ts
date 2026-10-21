@@ -5,10 +5,10 @@ import { bodyText, plainText, truncate } from '@/lib/text';
 /**
  * Server-side access to the public tips API.
  *
- * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`, `content_updated_at`)
- * and still working with the older API that has none of them: it pages by 10, ignores `per_page`, sends full
- * content in the list and has no content date. The sitemap's reads (including `/api/sitemap/tips`) are in
- * src/lib/sitemap-data.ts.
+ * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`, `content_updated_at`,
+ * `image`) and still working with the older API that has none of them: it pages by 10, ignores `per_page`, sends
+ * full content in the list, has no content date and describes the picture by `featured_image` alone. The sitemap's
+ * reads (including `/api/sitemap/tips`) are in src/lib/sitemap-data.ts.
  */
 
 export const TIPS_PER_PAGE = 12;
@@ -29,6 +29,25 @@ export interface TipSource {
   title: string;
 }
 
+/** One WebP copy of a tip's picture, `width` pixels wide. */
+export interface TipImageVariant {
+  url: string;
+  width: number;
+}
+
+/**
+ * A tip's picture as the API of 21 Oct 2026 describes it: the JPEG (also the share image), its pixel size, so a page
+ * can reserve the space before the file arrives, and its WebP copies (640 and 1200 wide at upload), smallest first.
+ * null with the older API, which sends `featured_image` alone.
+ */
+export interface TipImage {
+  url: string;
+  width: number;
+  height: number;
+  /** In ascending width; empty when the API lists no usable copy. */
+  variants: TipImageVariant[];
+}
+
 export interface TipCard {
   id: number;
   title: string;
@@ -36,6 +55,7 @@ export interface TipCard {
   excerpt: string;
   featured_image: string | null;
   image_alt_text: string | null;
+  image: TipImage | null;
   author_name: string | null;
   created_at: string;
   /** Moves on every save of the tip, SEO edits and status changes included. */
@@ -57,6 +77,7 @@ export interface RelatedTip {
   title: string;
   slug: string;
   featured_image: string | null;
+  image: TipImage | null;
   excerpt: string;
 }
 
@@ -121,6 +142,41 @@ function httpUrl(value: unknown): string | null {
   }
 }
 
+function httpsUrl(value: unknown): string | null {
+  const url = httpUrl(value);
+  return url !== null && url.startsWith('https://') ? url : null;
+}
+
+function positiveInt(value: unknown): number | null {
+  const n = toInt(value);
+  return n !== null && n > 0 ? n : null;
+}
+
+/**
+ * The API's `image` block as a TipImage, or null when there is none or it cannot be used: no https JPEG or no
+ * pixel size. A page treats null as "show featured_image as before", so a block the API gets wrong never breaks a
+ * page. Only copies with an https address and a pixel width count as variants; of two copies with the same width
+ * the first is kept.
+ */
+function toImage(value: unknown): TipImage | null {
+  if (!isRaw(value)) return null;
+  const url = httpsUrl(value.url);
+  const width = positiveInt(value.width);
+  const height = positiveInt(value.height);
+  if (!url || !width || !height) return null;
+  const variants: TipImageVariant[] = [];
+  for (const item of Array.isArray(value.variants) ? value.variants : []) {
+    if (!isRaw(item)) continue;
+    const variantUrl = httpsUrl(item.url);
+    const variantWidth = positiveInt(item.width);
+    if (variantUrl && variantWidth && !variants.some((variant) => variant.width === variantWidth)) {
+      variants.push({ url: variantUrl, width: variantWidth });
+    }
+  }
+  variants.sort((a, b) => a.width - b.width);
+  return { url, width, height, variants };
+}
+
 /** Readable text of a tip: without its headings when that leaves a sentence or more, else all of it. */
 function readableText(html: string): string {
   const body = bodyText(html);
@@ -139,6 +195,7 @@ function toCard(raw: Raw): TipCard {
     excerpt: excerptOf(raw),
     featured_image: httpUrl(raw.featured_image),
     image_alt_text: str(raw.image_alt_text),
+    image: toImage(raw.image),
     author_name: str(raw.author_name),
     created_at: str(raw.created_at) ?? '',
     updated_at: str(raw.updated_at),
@@ -184,6 +241,7 @@ function toRelated(value: unknown): RelatedTip[] | null {
       title: str(raw.title) ?? '',
       slug: str(raw.slug) ?? '',
       featured_image: httpUrl(raw.featured_image),
+      image: toImage(raw.image),
       excerpt: excerptOf(raw),
     }))
     .filter((tip) => tip.title !== '' && tip.slug !== '')
@@ -293,7 +351,7 @@ export async function getRelatedTips(tip: Tip): Promise<{ tips: RelatedTip[]; fr
     const tips = list
       .filter((t) => t.slug !== '' && t.slug !== tip.slug)
       .slice(0, 3)
-      .map((t) => ({ title: t.title, slug: t.slug, featured_image: t.featured_image, excerpt: t.excerpt }));
+      .map((t) => ({ title: t.title, slug: t.slug, featured_image: t.featured_image, image: t.image, excerpt: t.excerpt }));
     return { tips, fromApi: false };
   } catch {
     return { tips: [], fromApi: false };
