@@ -116,11 +116,14 @@ function toPages(items: Obj[], pathOf: (item: Obj) => string | null, dateOf: (it
 /* ---------------------------------------------------------------------- tips */
 
 /**
- * The date a tip's sitemap entry gives as its last change: today its updated_at, else its created_at. This is the one
- * place to switch to a content-only date once the API sends one.
+ * The date a tip's sitemap entry gives as its last change: its content_updated_at (API of 21 Oct 2026, moved only by
+ * a change to the title, body or code), else its updated_at (the older API, moved by every save), else its created_at.
+ * Never before created_at when that is sent too (the tip list; /api/sitemap/tips sends no created_at).
  */
 export function tipLastModified(tip: Obj): string | null {
-  return date(tip.updated_at) ?? date(tip.created_at);
+  const created = date(tip.created_at);
+  const modified = date(tip.content_updated_at) ?? date(tip.updated_at) ?? created;
+  return modified && created && new Date(modified).getTime() < new Date(created).getTime() ? created : modified;
 }
 
 /** The tip page answers only for slugs it is willing to send to the API, and with a 404 for anything else. */
@@ -144,7 +147,7 @@ async function tipsFromList(): Promise<Obj[]> {
   return tips;
 }
 
-/** Every published tip page: GET /api/sitemap/tips [{slug, updated_at}], else the paginated list. */
+/** Every published tip page: GET /api/sitemap/tips [{slug, updated_at, content_updated_at}], else the paginated list. */
 export async function getTipPages(): Promise<SitemapPage[]> {
   const result = await read('/api/sitemap/tips', 'tips sitemap', 'tips');
   const tips = result.found ? listOf(result.data, 'tips sitemap') : await tipsFromList();

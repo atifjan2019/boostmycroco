@@ -5,9 +5,10 @@ import { bodyText, plainText, truncate } from '@/lib/text';
 /**
  * Server-side access to the public tips API.
  *
- * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`) and still
- * working with the older API that has none of them: it pages by 10, ignores `per_page` and sends full
- * content in the list. The sitemap's reads (including `/api/sitemap/tips`) are in src/lib/sitemap-data.ts.
+ * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`, `content_updated_at`)
+ * and still working with the older API that has none of them: it pages by 10, ignores `per_page`, sends full
+ * content in the list and has no content date. The sitemap's reads (including `/api/sitemap/tips`) are in
+ * src/lib/sitemap-data.ts.
  */
 
 export const TIPS_PER_PAGE = 12;
@@ -37,7 +38,13 @@ export interface TipCard {
   image_alt_text: string | null;
   author_name: string | null;
   created_at: string;
+  /** Moves on every save of the tip, SEO edits and status changes included. */
   updated_at: string | null;
+  /**
+   * When the title, body or code last changed (API of 21 Oct 2026): the date the page, its structured data and the
+   * sitemap give as the last change. null with the older API, which sends only updated_at.
+   */
+  content_updated_at: string | null;
 }
 
 /** A page the tip links to by title and slug (the community request a tip answers). */
@@ -135,6 +142,7 @@ function toCard(raw: Raw): TipCard {
     author_name: str(raw.author_name),
     created_at: str(raw.created_at) ?? '',
     updated_at: str(raw.updated_at),
+    content_updated_at: str(raw.content_updated_at),
   };
 }
 
@@ -294,6 +302,24 @@ export async function getRelatedTips(tip: Tip): Promise<{ tips: RelatedTip[]; fr
 
 export function tipAuthor(tip: Pick<Tip, 'author_name'>): string {
   return tip.author_name ?? ORG_AUTHOR;
+}
+
+/**
+ * The date a tip's text last changed, for the visible "Updated" line, dateModified and modifiedTime: its
+ * content_updated_at, which only a change to the title, body or code moves, else its updated_at (the older API,
+ * which moves that on every save). null when the API sent neither. Never before the tip was published: a content
+ * date put back by hand that is earlier than created_at reads as the published date.
+ */
+export function tipModifiedAt(tip: Pick<TipCard, 'content_updated_at' | 'updated_at' | 'created_at'>): string | null {
+  return notBefore(tip.content_updated_at ?? tip.updated_at, tip.created_at);
+}
+
+/** `date`, or `floor` when both are dates and `date` is the earlier one. */
+function notBefore(date: string | null, floor: string | null | undefined): string | null {
+  if (!date || !floor) return date;
+  const d = new Date(date).getTime();
+  const f = new Date(floor).getTime();
+  return Number.isFinite(d) && Number.isFinite(f) && d < f ? floor : date;
 }
 
 export function isOrganizationAuthor(name: string): boolean {

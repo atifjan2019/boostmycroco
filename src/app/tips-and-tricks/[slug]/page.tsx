@@ -13,6 +13,7 @@ import {
   tipAuthor,
   tipCanonical,
   tipDescription,
+  tipModifiedAt,
   type Tip,
 } from '@/lib/tips';
 import { absoluteUrl, DEFAULT_OG_IMAGE, isSafeSlug, SITE_NAME, SITE_URL } from '@/lib/site';
@@ -77,7 +78,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       description: tip.og_description || description,
       images: [image],
       publishedTime: isoDate(tip.created_at),
-      modifiedTime: isoDate(tip.updated_at) ?? isoDate(tip.created_at),
+      modifiedTime: isoDate(tipModifiedAt(tip)) ?? isoDate(tip.created_at),
       authors: [author],
     },
     twitter: {
@@ -108,11 +109,12 @@ function hostname(url: string): string {
   }
 }
 
-/** True when the tip was changed at least a day after it was published. */
+/** True when the tip's text was changed at least a day after it was published (see tipModifiedAt). */
 function wasUpdated(tip: Tip): boolean {
-  if (!tip.updated_at || !tip.created_at) return false;
+  const modifiedAt = tipModifiedAt(tip);
+  if (!modifiedAt || !tip.created_at) return false;
   const published = new Date(tip.created_at).getTime();
-  const updated = new Date(tip.updated_at).getTime();
+  const updated = new Date(modifiedAt).getTime();
   return Number.isFinite(published) && Number.isFinite(updated) && updated - published > 24 * 60 * 60 * 1000;
 }
 
@@ -121,7 +123,7 @@ function buildStructuredData(tip: Tip, pageUrl: string, description: string): un
   // The image the page shows first; the share-only og_image_url and the site default only when it has none.
   const image = absoluteUrl(tip.featured_image || shareImage(tip).url);
   const published = isoDate(tip.created_at);
-  const modified = isoDate(tip.updated_at) ?? published;
+  const modified = isoDate(tipModifiedAt(tip)) ?? published;
 
   // Facts every article node must state exactly as the page shows them (byline, dates, address).
   const facts = {
@@ -192,6 +194,7 @@ export default async function TipDetailPage({ params }: { params: Params }) {
   const pageUrl = absoluteUrl(tipCanonical(tip));
   const author = tipAuthor(tip);
   const fallbackAlt = tip.image_alt_text || tip.title;
+  const modifiedAt = tipModifiedAt(tip);
   const content = enhanceImages(tip.content, fallbackAlt);
   const textAfterCode = tip.text_after_code ? enhanceImages(tip.text_after_code, fallbackAlt) : '';
 
@@ -226,7 +229,7 @@ export default async function TipDetailPage({ params }: { params: Params }) {
                 <span className="flex items-center gap-2">
                   <RefreshCw className="w-4 h-4" />
                   <span>
-                    Updated <time dateTime={isoDate(tip.updated_at)}>{formatDate(tip.updated_at)}</time>
+                    Updated <time dateTime={isoDate(modifiedAt)}>{formatDate(modifiedAt)}</time>
                   </span>
                 </span>
               )}
