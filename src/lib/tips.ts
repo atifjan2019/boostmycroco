@@ -5,9 +5,9 @@ import { bodyText, plainText, truncate } from '@/lib/text';
 /**
  * Server-side access to the public tips API.
  *
- * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`,
- * `/api/sitemap/tips`) and still working with the older API that has none of them: it pages by 10,
- * ignores `per_page`, sends full content in the list and has no sitemap endpoint.
+ * Coded against the documented API (`per_page`, `last_page`, `excerpt`, `related`, `sources`) and still
+ * working with the older API that has none of them: it pages by 10, ignores `per_page` and sends full
+ * content in the list. The sitemap's reads (including `/api/sitemap/tips`) are in src/lib/sitemap-data.ts.
  */
 
 export const TIPS_PER_PAGE = 12;
@@ -81,11 +81,6 @@ export interface TipListPage {
   page: number;
   perPage: number;
   lastPage: number;
-}
-
-export interface TipSitemapEntry {
-  slug: string;
-  updated_at: string | null;
 }
 
 type Raw = Record<string, unknown>;
@@ -225,6 +220,16 @@ function pageInfo(data: Raw, requestedPage: number, itemCount: number) {
   return { total, page: toInt(data.page) || requestedPage, perPage, lastPage };
 }
 
+/**
+ * The last page number of the tips list from one list answer, counted exactly as getTipsPage() counts it (the API's
+ * last_page, else its total over the page size), for the sitemap's ?page=N entries.
+ */
+export function tipListLastPage(data: unknown, requestedPage: number): number {
+  const body = isRaw(data) ? data : {};
+  const shown = (Array.isArray(body.tips) ? body.tips : []).filter((tip) => isRaw(tip) && str(tip.slug) !== null);
+  return pageInfo(body, requestedPage, shown.length).lastPage;
+}
+
 /** One page of the published tips list. Throws when the API cannot be reached. */
 export async function getTipsPage(page: number): Promise<TipListPage> {
   const url = `${API_BASE}/api/tips-and-tricks?page=${page}&per_page=${TIPS_PER_PAGE}`;
@@ -285,54 +290,6 @@ export async function getRelatedTips(tip: Tip): Promise<{ tips: RelatedTip[]; fr
   } catch {
     return { tips: [], fromApi: false };
   }
-}
-
-function toSitemapEntry(value: unknown): TipSitemapEntry | null {
-  if (!isRaw(value)) return null;
-  const slug = str(value.slug);
-  if (!slug) return null;
-  return { slug, updated_at: str(value.updated_at) ?? str(value.created_at) };
-}
-
-function uniqueEntries(entries: (TipSitemapEntry | null)[]): TipSitemapEntry[] {
-  const seen = new Set<string>();
-  return entries.filter((entry): entry is TipSitemapEntry => {
-    if (!entry || seen.has(entry.slug)) return false;
-    seen.add(entry.slug);
-    return true;
-  });
-}
-
-/** Every published tip's slug and last change, for the sitemap and build-time page generation. */
-export async function getTipSitemapEntries(): Promise<TipSitemapEntry[]> {
-  try {
-    const res = await fetch(`${API_BASE}/api/sitemap/tips`, {
-      next: { revalidate: TIP_PAGE_REVALIDATE },
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const data: unknown = await res.json();
-      if (Array.isArray(data)) return uniqueEntries(data.map(toSitemapEntry));
-    }
-  } catch {
-    // Older API: no sitemap endpoint. Walk the paginated list below.
-  }
-
-  const entries: (TipSitemapEntry | null)[] = [];
-  for (let page = 1, lastPage = 1; page <= lastPage && page <= 200; page++) {
-    const res = await fetch(`${API_BASE}/api/tips-and-tricks?page=${page}&per_page=50`, {
-      next: { revalidate: TIP_PAGE_REVALIDATE },
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error(`The tips list could not be loaded (HTTP ${res.status}).`);
-    const data: unknown = await res.json();
-    const body = isRaw(data) ? data : {};
-    const tips = Array.isArray(body.tips) ? body.tips : [];
-    if (tips.length === 0) break;
-    entries.push(...tips.map(toSitemapEntry));
-    lastPage = pageInfo(body, page, tips.length).lastPage;
-  }
-  return uniqueEntries(entries);
 }
 
 export function tipAuthor(tip: Pick<Tip, 'author_name'>): string {

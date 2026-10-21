@@ -2,8 +2,9 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 
 /**
- * On-demand refresh, called by the backend (App\Support\SiteRevalidator) after a request or a quote is created,
- * changed or deleted, so the affected pages show it without waiting for their 5 minute cache.
+ * On-demand refresh, called by the backend (App\Support\SiteRevalidator) after a request, a quote or a tip is created,
+ * changed, published, unpublished or deleted, so the affected pages (and /sitemap.xml) show it without waiting for
+ * their time-based refresh.
  *
  * POST with the header x-revalidate-secret (the value saved as REVALIDATE_SECRET in the hosting settings, and in
  * Admin > Settings > Website refresh) and the JSON body {"paths": ["/requests/<slug>", "/requests", …]}: at most 20
