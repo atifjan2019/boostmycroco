@@ -164,8 +164,8 @@ export default async function RequestDetailPage({ params }: { params: Params }) 
 
           <article lang={langAttribute(request.language)}>
             <div className="flex gap-3 mb-6 flex-wrap">
-              {request.status !== null && <StatusBadge status={request.status} />}
-              {request.archived && <ArchivedBadge />}
+              {/* An archived request shows only "Archived": its stored status would read as still open. */}
+              {request.archived ? <ArchivedBadge /> : request.status !== null && <StatusBadge status={request.status} />}
               <TypeBadge type={request.type} />
               {request.language && (
                 <span className="bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">

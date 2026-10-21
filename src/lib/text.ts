@@ -32,12 +32,22 @@ function decodeEntity(match: string, entity: string): string {
   return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
 }
 
-/** Visible text of an HTML fragment, with tags removed, common entities decoded and spaces collapsed. */
+/** Inline elements: their tags join text without a space ("a <a>demo grid</a>." reads "a demo grid."). */
+const INLINE_TAGS = new Set([
+  'a', 'abbr', 'b', 'bdi', 'bdo', 'cite', 'code', 'data', 'del', 'dfn', 'em', 'font', 'i', 'ins', 'kbd', 'mark', 'q', 's',
+  'samp', 'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var',
+]);
+
+/**
+ * Visible text of an HTML fragment, with tags removed, common entities decoded and spaces collapsed. Block tags
+ * (paragraphs, headings, list items, line breaks) become a space so their text does not run together; inline tags vanish.
+ */
 export function plainText(html?: string | null): string {
   if (!html || typeof html !== 'string') return '';
   return html
     .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
+    .replace(/<\/?([a-z][a-z0-9-]*)\b[^>]*>|<[^>]*>/gi, (_tag, name?: string) =>
+      name && INLINE_TAGS.has(name.toLowerCase()) ? '' : ' ')
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, decodeEntity)
     .replace(/\s+/g, ' ')
     .trim();

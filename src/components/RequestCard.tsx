@@ -26,8 +26,8 @@ export default function RequestCard({
     <article className="card p-6 relative flex flex-col h-full min-w-0">
       <div className="flex justify-between items-start gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
-          {r.status !== null && <StatusBadge status={r.status} />}
-          {r.archived && <ArchivedBadge />}
+          {/* An archived request shows only "Archived": its stored status would read as still open. */}
+          {r.archived ? <ArchivedBadge /> : r.status !== null && <StatusBadge status={r.status} />}
         </div>
         <TypeBadge type={r.type} />
       </div>
