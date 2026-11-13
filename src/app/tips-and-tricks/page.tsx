@@ -11,7 +11,8 @@ import { absoluteUrl, pageMetadata, SITE_URL } from '@/lib/site';
 import { formatDate, isoDate } from '@/lib/text';
 
 // Server-rendered on each request (it reads ?page=), with the API data cached for 10 minutes.
-export const revalidate = 600;
+// Hourly backstop: the backend's /api/revalidate call refreshes this the moment content changes.
+export const revalidate = 3600;
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
@@ -87,7 +88,7 @@ export default async function TipsAndTricksPage({ searchParams }: { searchParams
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {tips.map((t, index) => (
-                <Link key={t.id || t.slug} href={`/tips-and-tricks/${t.slug}`} className="card overflow-hidden flex flex-col group block">
+                <Link prefetch={false} key={t.id || t.slug} href={`/tips-and-tricks/${t.slug}`} className="card overflow-hidden flex flex-col group block">
                   {t.featured_image ? (
                     <div className="h-48 overflow-hidden border-b border-slate-100">
                       <TipPicture
@@ -120,13 +121,13 @@ export default async function TipsAndTricksPage({ searchParams }: { searchParams
           {lastPage > 1 && (
             <nav aria-label="Tips pages" className="flex justify-center items-center gap-3 mt-14">
               {page > 1 ? (
-                <Link href={listPath(page - 1)} rel="prev" className={pagerClass}>← Prev</Link>
+                <Link prefetch={false} href={listPath(page - 1)} rel="prev" className={pagerClass}>← Prev</Link>
               ) : (
                 <span aria-disabled="true" className={pagerDisabledClass}>← Prev</span>
               )}
               <span className="px-4 font-semibold text-slate-600 text-sm">{page} / {lastPage}</span>
               {page < lastPage ? (
-                <Link href={listPath(page + 1)} rel="next" className={pagerClass}>Next →</Link>
+                <Link prefetch={false} href={listPath(page + 1)} rel="next" className={pagerClass}>Next →</Link>
               ) : (
                 <span aria-disabled="true" className={pagerDisabledClass}>Next →</span>
               )}

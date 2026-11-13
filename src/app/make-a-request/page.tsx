@@ -96,8 +96,8 @@ export default function MakeARequestPage() {
           <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Request Submitted!</h2>
           <p className="text-slate-600 font-medium mb-10 leading-relaxed">Your request is now live and mentors will be in touch.</p>
           <div className="flex flex-col gap-3">
-            {newSlug && <Link href={`/requests/${newSlug}`} className="btn btn-primary px-8 py-3 w-full">View Your Request</Link>}
-            <Link href="/dashboard/requests" className={`btn ${newSlug ? 'btn-outline' : 'btn-primary'} px-8 py-3 w-full`}>View My Requests</Link>
+            {newSlug && <Link prefetch={false} href={`/requests/${newSlug}`} className="btn btn-primary px-8 py-3 w-full">View Your Request</Link>}
+            <Link prefetch={false} href="/dashboard/requests" className={`btn ${newSlug ? 'btn-outline' : 'btn-primary'} px-8 py-3 w-full`}>View My Requests</Link>
           </div>
         </div>
       </main>
@@ -123,8 +123,8 @@ export default function MakeARequestPage() {
                 <p className="text-amber-600 text-xs mt-1">Create an account or log in to submit your project request to the community.</p>
               </div>
               <div className="flex gap-2">
-                <Link href="/login" className="btn btn-outline text-sm py-2 px-4 border-amber-300 text-amber-700 hover:bg-amber-100">Login</Link>
-                <Link href="/register" className="btn btn-primary text-sm py-2 px-4">Register</Link>
+                <Link prefetch={false} href="/login" className="btn btn-outline text-sm py-2 px-4 border-amber-300 text-amber-700 hover:bg-amber-100">Login</Link>
+                <Link prefetch={false} href="/register" className="btn btn-primary text-sm py-2 px-4">Register</Link>
               </div>
             </div>
           )}
@@ -135,7 +135,7 @@ export default function MakeARequestPage() {
                 <p className="font-bold text-red-800 text-sm">Complete your profile first!</p>
                 <p className="text-red-600 text-xs mt-1">You need to fill in all required profile fields before you can post requests.</p>
               </div>
-              <Link href="/dashboard/profile" className="btn btn-primary text-sm py-2 px-4 bg-red-600 hover:bg-red-700 border-red-600">Complete Profile</Link>
+              <Link prefetch={false} href="/dashboard/profile" className="btn btn-primary text-sm py-2 px-4 bg-red-600 hover:bg-red-700 border-red-600">Complete Profile</Link>
             </div>
           )}
 

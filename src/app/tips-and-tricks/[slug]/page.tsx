@@ -207,7 +207,7 @@ export default async function TipDetailPage({ params }: { params: Params }) {
       <Navbar />
       <main className="flex-1">
         <article className="max-w-3xl mx-auto px-6 py-8">
-          <Link href="/tips-and-tricks" className="inline-flex items-center text-slate-500 text-sm font-semibold hover:text-primary transition-colors mb-6 group">
+          <Link prefetch={false} href="/tips-and-tricks" className="inline-flex items-center text-slate-500 text-sm font-semibold hover:text-primary transition-colors mb-6 group">
             <ChevronLeft className="w-4 h-4 mr-1 transition-transform group-hover:-translate-x-1" /> Back to Tips & Tricks
           </Link>
 
@@ -299,7 +299,7 @@ export default async function TipDetailPage({ params }: { params: Params }) {
           {tip.source_request && (
             <p className="mt-12 text-slate-600 leading-relaxed">
               This guide answers a question from our community:{' '}
-              <Link href={`/requests/${tip.source_request.slug}`} className="font-semibold text-primary hover:text-primary-dark">
+              <Link prefetch={false} href={`/requests/${tip.source_request.slug}`} className="font-semibold text-primary hover:text-primary-dark">
                 {tip.source_request.title}
               </Link>
             </p>
@@ -332,7 +332,7 @@ export default async function TipDetailPage({ params }: { params: Params }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 {related.map((r) => (
-                  <Link key={r.slug} href={`/tips-and-tricks/${r.slug}`} className="card overflow-hidden flex flex-col group">
+                  <Link prefetch={false} key={r.slug} href={`/tips-and-tricks/${r.slug}`} className="card overflow-hidden flex flex-col group">
                     {r.featured_image ? (
                       <div className="h-32 overflow-hidden border-b border-slate-100">
                         <TipPicture

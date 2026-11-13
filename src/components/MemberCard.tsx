@@ -62,7 +62,7 @@ export default function MemberCard({ member: m }: { member: MemberCardData }) {
       </div>
       <h2 className="font-bold text-slate-800 text-lg mb-1 truncate">
         {m.slug ? (
-          <Link
+          <Link prefetch={false}
             href={`/teamwork/${m.slug}`}
             className="outline-none hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
           >

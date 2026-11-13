@@ -53,7 +53,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
-              <Link 
+              <Link prefetch={false} 
                 key={item.href} 
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
@@ -70,7 +70,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </div>
 
         <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
-          <Link href="/" className="flex w-full items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+          <Link prefetch={false} href="/" className="flex w-full items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-50 transition-colors">
             <ArrowLeft className="w-5 h-5" />
             Back to Website
           </Link>

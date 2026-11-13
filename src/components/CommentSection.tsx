@@ -244,8 +244,8 @@ export default function CommentSection({ tipId, tipSlug }: { tipId: number; tipS
           <div className="text-center py-4">
             <p className="text-slate-600 font-medium mb-3">Join the conversation</p>
             <div className="flex justify-center gap-3">
-              <Link href="/login" className="btn btn-outline text-sm py-2 px-5">Log In</Link>
-              <Link href="/register" className="btn btn-primary text-sm py-2 px-5">Register</Link>
+              <Link prefetch={false} href="/login" className="btn btn-outline text-sm py-2 px-5">Log In</Link>
+              <Link prefetch={false} href="/register" className="btn btn-primary text-sm py-2 px-5">Register</Link>
             </div>
           </div>
         ) : (

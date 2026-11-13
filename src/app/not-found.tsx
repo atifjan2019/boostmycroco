@@ -42,7 +42,7 @@ export default function NotFound() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
+            <Link prefetch={false} 
               href="/" 
               className="btn btn-primary px-8 py-3.5 shadow-md shadow-green-600/20 flex items-center gap-2 group w-full sm:w-auto text-base"
             >
@@ -50,7 +50,7 @@ export default function NotFound() {
               Back to Home
             </Link>
             
-            <Link 
+            <Link prefetch={false} 
               href="/requests"
               className="btn btn-outline border-slate-300 hover:bg-slate-100 flex items-center gap-2 group w-full sm:w-auto text-base"
             >

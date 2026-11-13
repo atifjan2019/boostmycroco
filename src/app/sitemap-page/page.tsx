@@ -61,7 +61,7 @@ export default function SitemapPage() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {staticLinks.map(({ label, href, icon: Icon }) => (
                 <li key={href}>
-                  <Link href={href} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all group">
+                  <Link prefetch={false} href={href} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all group">
                     <Icon className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
                     <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors">{label}</span>
                   </Link>
@@ -78,7 +78,7 @@ export default function SitemapPage() {
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {tips.map((tip) => (
                   <li key={tip.id}>
-                    <Link href={`/tips-and-tricks/${tip.slug}`} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all group">
+                    <Link prefetch={false} href={`/tips-and-tricks/${tip.slug}`} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-100 hover:border-primary/30 hover:shadow-sm transition-all group">
                       <BookOpen className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors flex-shrink-0" />
                       <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors line-clamp-1">{tip.title}</span>
                     </Link>

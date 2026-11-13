@@ -14,7 +14,7 @@ import { bodyText, plainText, truncate } from '@/lib/text';
 export const TIPS_PER_PAGE = 12;
 /** Page size of the older API, which ignores `per_page`. */
 const LEGACY_PAGE_SIZE = 10;
-export const TIP_LIST_REVALIDATE = 600;
+export const TIP_LIST_REVALIDATE = 3600; // on-demand /api/revalidate handles changes
 export const TIP_PAGE_REVALIDATE = 3600;
 
 export const ORG_AUTHOR = 'BoostMyCroco Team';

@@ -23,7 +23,7 @@ import {
 export type Lookup<T> = { status: 'found'; data: T } | { status: 'missing' } | { status: 'error' };
 
 /** API answers are cached for 5 minutes (and refreshed at once when the backend calls /api/revalidate). */
-export const COMMUNITY_REVALIDATE = 300;
+export const COMMUNITY_REVALIDATE = 3600; // on-demand /api/revalidate handles changes
 
 /** Rows per page on /requests and /teamwork. */
 export const PER_PAGE = 12;

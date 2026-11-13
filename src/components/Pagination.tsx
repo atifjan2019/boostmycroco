@@ -46,7 +46,7 @@ export default function Pagination({
   return (
     <nav aria-label={label} className="mt-14 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
       {page > 1 ? (
-        <Link href={listPath(basePath, page - 1)} rel="prev" className={`${PAGER_BUTTON} ${FOCUS}`}>
+        <Link prefetch={false} href={listPath(basePath, page - 1)} rel="prev" className={`${PAGER_BUTTON} ${FOCUS}`}>
           ← Prev
         </Link>
       ) : (
@@ -61,7 +61,7 @@ export default function Pagination({
             </li>
           ) : (
             <li key={item}>
-              <Link
+              <Link prefetch={false}
                 href={listPath(basePath, item)}
                 aria-label={`Page ${item}`}
                 aria-current={item === page ? 'page' : undefined}
@@ -79,7 +79,7 @@ export default function Pagination({
       </ol>
 
       {page < lastPage ? (
-        <Link href={listPath(basePath, page + 1)} rel="next" className={`${PAGER_BUTTON} ${FOCUS}`}>
+        <Link prefetch={false} href={listPath(basePath, page + 1)} rel="next" className={`${PAGER_BUTTON} ${FOCUS}`}>
           Next →
         </Link>
       ) : (

@@ -131,7 +131,7 @@ export default function CookieConsent() {
             <p>
               Sign-in and security cookies are always on. You can change your choice at any time under
               &ldquo;Cookie settings&rdquo; in the site footer.{' '}
-              <Link
+              <Link prefetch={false}
                 href="/privacy-policy#cookies"
                 className="rounded font-semibold text-slate-900 underline decoration-primary decoration-2 underline-offset-2 hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark"
               >

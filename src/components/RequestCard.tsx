@@ -33,7 +33,7 @@ export default function RequestCard({
       </div>
       <Heading className="font-bold text-[15px] leading-snug mb-3 text-slate-800 line-clamp-2 break-words">
         {href ? (
-          <Link
+          <Link prefetch={false}
             href={href}
             className="outline-none hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
           >

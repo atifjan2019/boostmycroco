@@ -16,7 +16,8 @@ import { formatMoney, isoDate, shortDate, truncate } from '@/lib/text';
 
 // Built on its first visit, then cached for 5 minutes (the backend also refreshes it through /api/revalidate when
 // the member posts a request or a quote). No loading.tsx: the 404 and the 308 must be decided before any HTML.
-export const revalidate = 300;
+// Hourly backstop: the backend's /api/revalidate call refreshes this the moment content changes.
+export const revalidate = 3600;
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return [];
@@ -162,7 +163,7 @@ export default async function MemberProfilePage({ params }: { params: Params }) 
                         </div>
                         <h3 className="font-bold text-slate-800 text-[15px] leading-snug break-words">
                           {href ? (
-                            <Link
+                            <Link prefetch={false}
                               href={href}
                               className="outline-none hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
                             >
@@ -204,7 +205,7 @@ export default async function MemberProfilePage({ params }: { params: Params }) 
                         <div className="flex justify-between items-start mb-3 gap-3">
                           <h3 className="font-bold text-slate-800 text-[15px] leading-snug break-words min-w-0">
                             {q.request_slug ? (
-                              <Link
+                              <Link prefetch={false}
                                 href={`/requests/${q.request_slug}`}
                                 className="outline-none hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
                               >
@@ -236,7 +237,7 @@ export default async function MemberProfilePage({ params }: { params: Params }) 
         </div>
 
         <div className="max-w-7xl mx-auto px-6 pb-12">
-          <Link href="/teamwork" className="inline-flex items-center py-1 text-slate-500 text-sm font-semibold hover:text-primary transition-colors">
+          <Link prefetch={false} href="/teamwork" className="inline-flex items-center py-1 text-slate-500 text-sm font-semibold hover:text-primary transition-colors">
             ← Back to TeamWork
           </Link>
         </div>

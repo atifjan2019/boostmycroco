@@ -17,7 +17,7 @@ export default function Footer() {
         <div>
           <div className="font-semibold mb-4 text-text-muted text-xs uppercase tracking-wider">Platform</div>
           {[['Requests', '/requests'], ['TeamWork', '/teamwork'], ['Make a Request', '/make-a-request'], ['Contact Us', '/contact']].map(([label, href]) => (
-            <Link key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
+            <Link prefetch={false} key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
               {label}
             </Link>
           ))}
@@ -25,7 +25,7 @@ export default function Footer() {
         <div>
           <div className="font-semibold mb-4 text-text-muted text-xs uppercase tracking-wider">Community</div>
           {[['Tips & Tricks', '/tips-and-tricks'], ['TeamWork Directory', '/teamwork'], ['Roadmap', '/roadmap']].map(([label, href]) => (
-            <Link key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
+            <Link prefetch={false} key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
               {label}
             </Link>
           ))}
@@ -33,7 +33,7 @@ export default function Footer() {
         <div>
           <div className="font-semibold mb-4 text-text-muted text-xs uppercase tracking-wider">Legal</div>
           {[['Terms & Conditions', '/terms-and-conditions'], ['Privacy Policy', '/privacy-policy'], ['Sitemap', '/sitemap-page']].map(([label, href]) => (
-            <Link key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
+            <Link prefetch={false} key={href} href={href} className="block text-text-muted text-sm mb-2 hover:text-primary transition-colors">
               {label}
             </Link>
           ))}

@@ -37,7 +37,7 @@ export default function DashboardOverviewPage() {
           </h1>
           <p className="text-slate-500 font-medium">Here's what's happening with your projects today.</p>
         </div>
-        <Link href="/dashboard/requests/new" className="btn btn-primary shadow-lg shadow-green-600/20 flex gap-2 items-center">
+        <Link prefetch={false} href="/dashboard/requests/new" className="btn btn-primary shadow-lg shadow-green-600/20 flex gap-2 items-center">
           <Plus className="w-5 h-5" />
           <span>Post a Request</span>
         </Link>
@@ -61,7 +61,7 @@ export default function DashboardOverviewPage() {
         </div>
 
         {/* Profile Completion Card */}
-        <Link href="/dashboard/profile" className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-primary/30 transition-colors group">
+        <Link prefetch={false} href="/dashboard/profile" className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-primary/30 transition-colors group">
           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4">
             <User className="w-6 h-6" />
           </div>
@@ -84,11 +84,11 @@ export default function DashboardOverviewPage() {
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="border-b border-slate-100 px-8 py-6 flex justify-between items-center">
           <h2 className="text-xl font-bold text-slate-900">Recent Activity</h2>
-          <Link href="/dashboard/requests" className="text-sm font-bold text-primary hover:underline">View All</Link>
+          <Link prefetch={false} href="/dashboard/requests" className="text-sm font-bold text-primary hover:underline">View All</Link>
         </div>
         <div className="p-8 text-center bg-slate-50/50">
           <p className="text-slate-500 font-medium my-8">No recent activity on your requests.</p>
-          <Link href="/dashboard/requests/new" className="text-primary font-bold hover:underline inline-flex items-center gap-1">
+          <Link prefetch={false} href="/dashboard/requests/new" className="text-primary font-bold hover:underline inline-flex items-center gap-1">
             <Plus className="w-4 h-4" /> Post a new request
           </Link>
         </div>

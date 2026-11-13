@@ -22,7 +22,7 @@ export default function Breadcrumbs({ items, className = 'mb-6' }: { items: Crum
                   {item.name}
                 </span>
               ) : (
-                <Link href={item.path} className="inline-block py-1 hover:text-primary transition-colors">
+                <Link prefetch={false} href={item.path} className="inline-block py-1 hover:text-primary transition-colors">
                   {item.name}
                 </Link>
               )}

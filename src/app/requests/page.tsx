@@ -12,7 +12,8 @@ import { breadcrumbList } from '@/lib/jsonld';
 import { pageMetadata, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // Server-rendered on each request (it reads ?page=), with the API answers cached for 5 minutes.
-export const revalidate = 300;
+// Hourly backstop: the backend's /api/revalidate call refreshes this the moment content changes.
+export const revalidate = 3600;
 
 const BASE_PATH = '/requests';
 

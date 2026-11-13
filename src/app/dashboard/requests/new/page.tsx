@@ -93,7 +93,7 @@ export default function NewRequestPage() {
             <p className="font-bold text-red-800 text-sm">Complete your profile first!</p>
             <p className="text-red-600 text-xs mt-1">You need to fill in all required profile fields before you can post requests.</p>
           </div>
-          <Link href="/dashboard/profile" className="btn btn-primary text-sm py-2 px-4 bg-red-600 hover:bg-red-700 border-red-600">Complete Profile</Link>
+          <Link prefetch={false} href="/dashboard/profile" className="btn btn-primary text-sm py-2 px-4 bg-red-600 hover:bg-red-700 border-red-600">Complete Profile</Link>
         </div>
       )}
 

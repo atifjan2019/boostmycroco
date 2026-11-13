@@ -20,7 +20,8 @@ import { formatMoney, isoDate, plainText, shortDate, truncate } from '@/lib/text
 // Built on its first visit, then cached for 5 minutes (the backend also refreshes it at once through /api/revalidate
 // when the request or one of its quotes changes). No loading.tsx: the 404 and the 308 to the canonical address must
 // be decided before any HTML is sent.
-export const revalidate = 300;
+// Hourly backstop: the backend's /api/revalidate call refreshes this the moment content changes.
+export const revalidate = 3600;
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return [];
@@ -183,7 +184,7 @@ export default async function RequestDetailPage({ params }: { params: Params }) 
                 <User aria-hidden="true" className="w-4 h-4 shrink-0" />
                 {request.author_name ? (
                   request.author_slug ? (
-                    <Link href={`/teamwork/${request.author_slug}`} className="py-0.5 font-semibold text-slate-600 hover:text-primary transition-colors break-words">
+                    <Link prefetch={false} href={`/teamwork/${request.author_slug}`} className="py-0.5 font-semibold text-slate-600 hover:text-primary transition-colors break-words">
                       {request.author_name}
                     </Link>
                   ) : (
@@ -223,7 +224,7 @@ export default async function RequestDetailPage({ params }: { params: Params }) 
             {request.related_tip && (
               <p className="text-slate-600 leading-relaxed">
                 Related guide:{' '}
-                <Link href={`/tips-and-tricks/${request.related_tip.slug}`} className="font-semibold text-primary hover:text-primary-dark">
+                <Link prefetch={false} href={`/tips-and-tricks/${request.related_tip.slug}`} className="font-semibold text-primary hover:text-primary-dark">
                   {request.related_tip.title}
                 </Link>
               </p>
@@ -257,7 +258,7 @@ export default async function RequestDetailPage({ params }: { params: Params }) 
                   <div key={tip.slug} className="card p-5 relative flex items-start gap-3 min-w-0">
                     <BookOpen aria-hidden="true" className="w-5 h-5 text-primary shrink-0 mt-0.5" strokeWidth={2} />
                     <h3 className="font-bold text-sm leading-snug text-slate-900 line-clamp-3 break-words">
-                      <Link
+                      <Link prefetch={false}
                         href={`/tips-and-tricks/${tip.slug}`}
                         className="outline-none hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2"
                       >

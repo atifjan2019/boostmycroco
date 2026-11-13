@@ -92,7 +92,7 @@ export default function LoginPage() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="login-password" className="block text-sm font-bold text-slate-800">Password</label>
-                <Link href="/forgot-password" className="text-primary text-xs font-bold hover:underline">Forgot?</Link>
+                <Link prefetch={false} href="/forgot-password" className="text-primary text-xs font-bold hover:underline">Forgot?</Link>
               </div>
               <input id="login-password" type="password" required className="input" placeholder="••••••••" autoComplete="current-password"
                 {...ariaFor('password', 'login-password')}
@@ -108,7 +108,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 text-center text-sm font-medium text-slate-500">
-            Don't have an account? <Link href="/register" className="text-primary font-bold hover:underline">Register now</Link>
+            Don't have an account? <Link prefetch={false} href="/register" className="text-primary font-bold hover:underline">Register now</Link>
           </div>
         </div>
       </main>

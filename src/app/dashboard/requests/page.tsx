@@ -35,7 +35,7 @@ export default function MyRequestsPage() {
             </button>
           </div>
           {activeTab === 'requests' && (
-            <Link href="/dashboard/requests/new" className="btn btn-primary shadow-md shadow-green-600/20 py-2.5 px-4 flex items-center gap-2">
+            <Link prefetch={false} href="/dashboard/requests/new" className="btn btn-primary shadow-md shadow-green-600/20 py-2.5 px-4 flex items-center gap-2">
               <Plus className="w-4 h-4" /> New Request
             </Link>
           )}
@@ -51,14 +51,14 @@ export default function MyRequestsPage() {
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">No Requests Found</h3>
               <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto mb-6">You haven't posted any project requests on the marketplace yet.</p>
-              <Link href="/dashboard/requests/new" className="btn btn-primary inline-flex">Post your first request</Link>
+              <Link prefetch={false} href="/dashboard/requests/new" className="btn btn-primary inline-flex">Post your first request</Link>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
               {myRequests.map((r: any) => (
                 <div key={r.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors group">
                   <div>
-                    <Link href={`/requests/${r.id}`} className="font-bold text-slate-900 text-lg hover:text-primary transition-colors block mb-1">
+                    <Link prefetch={false} href={`/requests/${r.id}`} className="font-bold text-slate-900 text-lg hover:text-primary transition-colors block mb-1">
                       {r.title}
                     </Link>
                     <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
@@ -68,7 +68,7 @@ export default function MyRequestsPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className={`badge badge-${statusKey(r.status) ?? (r.status ? 'other' : 'initied')}`}>{statusLabel(r.status)}</span>
-                    <Link href={`/requests/${r.id}`} className="text-slate-400 group-hover:text-primary p-2 rounded-full hover:bg-green-50 transition-colors hidden md:block">
+                    <Link prefetch={false} href={`/requests/${r.id}`} className="text-slate-400 group-hover:text-primary p-2 rounded-full hover:bg-green-50 transition-colors hidden md:block">
                       <ChevronRight className="w-5 h-5" />
                     </Link>
                   </div>
@@ -88,7 +88,7 @@ export default function MyRequestsPage() {
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">No Quotes Found</h3>
               <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto mb-6">You haven't submitted any quotes for existing requests yet.</p>
-              <Link href="/requests" className="btn btn-outline inline-flex">Browse Open Requests</Link>
+              <Link prefetch={false} href="/requests" className="btn btn-outline inline-flex">Browse Open Requests</Link>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">

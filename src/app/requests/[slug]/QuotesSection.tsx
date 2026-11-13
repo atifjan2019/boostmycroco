@@ -124,7 +124,7 @@ export default function QuotesSection({
         ) : !token ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-slate-600 font-medium mb-4">Want to offer your expertise for this request?</p>
-            <Link href="/login" className="btn btn-primary inline-flex">Log in to Quote</Link>
+            <Link prefetch={false} href="/login" className="btn btn-primary inline-flex">Log in to Quote</Link>
           </div>
         ) : (
           <form className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" onSubmit={handleQuoteSubmit}>

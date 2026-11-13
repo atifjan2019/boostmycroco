@@ -30,7 +30,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 flex items-center h-16 gap-8">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center">
+        <Link prefetch={false} href="/" className="flex items-center">
           {/* As requested, light theme means colorful logo */}
           <Image src="/colorlogo.png" alt="BoostMyCroco" width={160} height={40} className="object-contain h-9 w-auto" priority />
         </Link>
@@ -38,7 +38,7 @@ export default function Navbar() {
         {/* Desktop Links */}
         <div className="hidden md:flex gap-1 flex-1">
           {navLinks.map(l => (
-            <Link key={l.href} href={l.href} className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            <Link prefetch={false} key={l.href} href={l.href} className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
               pathname.startsWith(l.href) ? 'text-primary bg-primary/10' : 'text-text-muted hover:text-text'
             }`}>
               {l.label}
@@ -48,16 +48,16 @@ export default function Navbar() {
 
         {/* Actions Desktop */}
         <div className="hidden md:flex gap-3 items-center ml-auto">
-          <Link href="/make-a-request" className="btn btn-primary">+ Make a Request</Link>
+          <Link prefetch={false} href="/make-a-request" className="btn btn-primary">+ Make a Request</Link>
           {!loading && user ? (
-            <Link href="/dashboard" className="btn btn-outline border-slate-300 hover:bg-slate-100 flex items-center gap-2">
+            <Link prefetch={false} href="/dashboard" className="btn btn-outline border-slate-300 hover:bg-slate-100 flex items-center gap-2">
               <div className="w-5 h-5 rounded-md bg-primary text-white flex items-center justify-center font-bold text-xs">
                 {user?.client_profile?.first_name?.[0] || user?.name?.[0] || 'C'}
               </div>
               Dashboard
             </Link>
           ) : (
-            <Link href="/login" className="btn btn-outline">Login</Link>
+            <Link prefetch={false} href="/login" className="btn btn-outline">Login</Link>
           )}
         </div>
 
@@ -76,16 +76,16 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-border px-6 py-4 flex flex-col gap-3 shadow-lg">
           {navLinks.map(l => (
-            <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
+            <Link prefetch={false} key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
               className={`font-medium ${pathname.startsWith(l.href) ? 'text-primary' : 'text-text-muted'}`}>
               {l.label}
             </Link>
           ))}
-          <Link href="/make-a-request" className="btn btn-primary mt-2 flex justify-center">+ Make a Request</Link>
+          <Link prefetch={false} href="/make-a-request" className="btn btn-primary mt-2 flex justify-center">+ Make a Request</Link>
           {!loading && user ? (
-            <Link href="/dashboard" className="btn btn-outline flex justify-center bg-slate-50 border-slate-200">Dashboard</Link>
+            <Link prefetch={false} href="/dashboard" className="btn btn-outline flex justify-center bg-slate-50 border-slate-200">Dashboard</Link>
           ) : (
-            <Link href="/login" className="btn btn-outline flex justify-center">Login</Link>
+            <Link prefetch={false} href="/login" className="btn btn-outline flex justify-center">Login</Link>
           )}
         </div>
       )}

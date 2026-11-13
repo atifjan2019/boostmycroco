@@ -11,7 +11,8 @@ import { API_BASE, DEFAULT_DESCRIPTION, DEFAULT_TITLE, pageMetadata } from '@/li
 interface Stats { total_requests: number; total_members: number; total_quotes: number; finished: number; }
 
 // Rendered on the server so the stats and recent requests are in the HTML; refreshed every 10 minutes.
-export const revalidate = 600;
+// Hourly backstop: the backend's /api/revalidate call refreshes this the moment content changes.
+export const revalidate = 3600;
 
 export const metadata: Metadata = pageMetadata({
   title: { absolute: DEFAULT_TITLE },
@@ -21,7 +22,7 @@ export const metadata: Metadata = pageMetadata({
 
 async function getStats(): Promise<{ stats: Stats | null; recentFallback: unknown }> {
   try {
-    const res = await fetch(`${API_BASE}/api/stats`, { next: { revalidate: 600 }, headers: { Accept: 'application/json' } });
+    const res = await fetch(`${API_BASE}/api/stats`, { next: { revalidate: 3600 }, headers: { Accept: 'application/json' } });
     if (!res.ok) return { stats: null, recentFallback: null };
     const data = await res.json();
     return { stats: data?.stats ?? null, recentFallback: data?.recent_requests };
@@ -68,10 +69,10 @@ export default async function HomePage() {
             </p>
 
             <div className="flex gap-4 justify-center flex-wrap">
-              <Link href="/make-a-request" className="btn btn-primary text-base px-8 py-3.5 shadow-md shadow-green-600/20">
+              <Link prefetch={false} href="/make-a-request" className="btn btn-primary text-base px-8 py-3.5 shadow-md shadow-green-600/20">
                 <Rocket className="w-5 h-5" /> Make a Request
               </Link>
-              <Link href="/requests" className="btn btn-outline text-base px-8 py-3.5 bg-white shadow-sm">
+              <Link prefetch={false} href="/requests" className="btn btn-outline text-base px-8 py-3.5 bg-white shadow-sm">
                 Browse Requests
               </Link>
             </div>
@@ -129,7 +130,7 @@ export default async function HomePage() {
             <div className="max-w-7xl mx-auto px-6">
               <div className="flex justify-between items-center mb-12">
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Recent Requests</h2>
-                <Link href="/requests" className="inline-block py-1 text-primary text-sm font-bold hover:underline">View all →</Link>
+                <Link prefetch={false} href="/requests" className="inline-block py-1 text-primary text-sm font-bold hover:underline">View all →</Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recent.map((r, i) => (
@@ -145,7 +146,7 @@ export default async function HomePage() {
           <div className="max-w-3xl mx-auto bg-gradient-to-br from-green-50 to-sky-50 border border-green-100 rounded-3xl p-16 shadow-lg shadow-green-100/50">
             <h2 className="text-4xl font-extrabold mb-5 text-slate-900 tracking-tight">Ready to get started?</h2>
             <p className="text-slate-600 text-lg mb-10 font-medium">Join 232+ community members already using BoostMyCroco.</p>
-            <Link href="/make-a-request" className="btn btn-primary text-base px-10 py-4 shadow-md shadow-green-600/20">
+            <Link prefetch={false} href="/make-a-request" className="btn btn-primary text-base px-10 py-4 shadow-md shadow-green-600/20">
               Post Your First Request
             </Link>
           </div>

@@ -20,7 +20,7 @@ export default function RequestsError({ unstable_retry }: { error: Error & { dig
             <button type="button" onClick={() => unstable_retry()} className="btn btn-primary">
               <RefreshCw className="w-4 h-4" /> Try again
             </button>
-            <Link href="/" className="btn btn-outline bg-white">Back to Home</Link>
+            <Link prefetch={false} href="/" className="btn btn-outline bg-white">Back to Home</Link>
           </div>
         </div>
       </main>
